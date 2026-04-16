@@ -3,14 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
     <title>MUSE AI Playlist Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Welcome to the MUSE AI Playlist Generator</h1>
-    <p>Use this application to generate playlists based on your music preferences!</p>
-
-    <script>
-        // JavaScript code for generating playlists will go here
-    </script>
+    <div id="hero">
+        <h1>Generate Your Playlist</h1>
+        <button id="spotifyLogin">Login with Spotify</button>
+    </div>
+    <div id="buildCard">
+        <input type="text" id="promptInput" placeholder="Enter your prompt...">
+        <label for="slider1">Energy:</label>
+        <input type="range" id="slider1" min="0" max="100">
+        <label for="slider2">Danceability:</label>
+        <input type="range" id="slider2" min="0" max="100">
+        <button id="generatePlaylist">Generate Playlist</button>
+    </div>
+    <div id="loadingAnimation" style="display: none;">
+        <p>Loading...</p>
+    </div>
+    <div id="playlistResults"></div>
+    <script src="script.js"></script>
 </body>
 </html>
