@@ -10,7 +10,7 @@ const SCOPES = "playlist-modify-public playlist-modify-private";
 function getSpotifyAuthUrl() {
   const params = new URLSearchParams({
     client_id: SPOTIFY_CLIENT_ID,
-    response_type: "token",
+    response_type: "code",
     redirect_uri: REDIRECT_URI,
     scope: SCOPES,
     show_dialog: "true",
