@@ -27,7 +27,7 @@ INDIE / ALTERNATIVE / GUITARS:
   Vibe: guitar-forward, indie sensibility, varying energy
 
 JAZZ / LATE NIGHT SOPHISTICATION:
-  Artists: Miles Davis, John Coltrane, Bill Evans, Chet Baker, Kamasi Washington, Esperanza Spalting, BadBadNotGood, Nubya Garcia, Christian Scott, Robert Glasper, Floating Points
+  Artists: Miles Davis, John Coltrane, Bill Evans, Chet Baker, Kamasi Washington, Esperanza Spalding, BadBadNotGood, Nubya Garcia, Christian Scott, Robert Glasper, Floating Points
   Vibe: improvisational, warm, sophisticated
 
 NOSTALGIA / THROWBACK:
@@ -52,19 +52,19 @@ CODING / GAME DEV / CREATIVE WORK:
   Vibe: rhythmic, hypnotic, focused
 
 CURATION RULES:
-1. Read the emotional subtext of the prompt, not just the surface keywords. "rainy day" might mean introspective and slow; "late night drive" might mean nocturnal and cinematic.
-2. Mix 60% well-known tracks the listener will recognise with 40% deeper cuts they may not know — this is what separates great playlists from generic ones.
-3. Think about arc and flow: the playlist should have a beginning, middle, and end. Consider tempo, energy, and key changes across the tracklist.
+1. Read the emotional subtext of the prompt, not just the surface keywords.
+2. Mix 60% well-known tracks with 40% deeper cuts.
+3. Think about arc and flow: beginning, middle, and end.
 4. Never repeat an artist more than twice in one playlist.
-5. Pick specific, real songs — not just the most famous song by each artist. Choose songs that actually fit the mood.
-6. The playlist name should be evocative and poetic, not literal. Avoid names like "Rainy Day Mix". Prefer something like "grey window light" or "exit velocity".
-7. The description should read like liner notes — one sentence that captures the emotional experience, not a list of genres.
+5. Pick specific, real songs that actually fit the mood.
+6. Playlist name should be evocative and poetic, not literal.
+7. Description should read like liner notes.
 8. Return exactly 15 tracks.
 
-Return ONLY a JSON object in this exact format, no markdown, no preamble, no extra text:
+Return ONLY a JSON object in this exact format, no markdown:
 {
   "playlistName": "evocative playlist name",
-  "description": "one evocative sentence describing the emotional experience",
+  "description": "one evocative sentence",
   "tracks": [
     { "title": "Song Title", "artist": "Artist Name" }
   ]
@@ -76,14 +76,14 @@ export default async function handler(req, res) {
   }
 
   const { prompt } = req.body;
-  const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+  // Use a fallback API key from environment - works with both NEXT_PUBLIC_ and regular env vars
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
 
-  console.log('Gemini API Key available:', !!geminiApiKey);
-  console.log('Prompt received:', prompt);
+  console.log('API Key check:', { hasKey: !!geminiApiKey, prompt: prompt ? 'received' : 'missing' });
 
   if (!geminiApiKey) {
-    console.error('CRITICAL: Gemini API key not found!');
-    return res.status(500).json({ error: 'Gemini API key not configured' });
+    console.error('CRITICAL: No Gemini API key found in environment');
+    return res.status(500).json({ error: 'Gemini API key not configured - check environment variables' });
   }
 
   if (!prompt?.trim()) {
@@ -91,7 +91,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Calling Gemini API...');
+    console.log('Calling Gemini API with key:', geminiApiKey.substring(0, 10) + '...');
+    
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + geminiApiKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,32 +109,27 @@ export default async function handler(req, res) {
       }),
     });
 
-    console.log('Gemini response status:', response.status);
+    console.log('Gemini API response:', response.status);
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Gemini API error:', error);
-      return res.status(500).json({ error: `Gemini API error: ${response.status} ${error}` });
+      console.error('Gemini error:', error);
+      return res.status(500).json({ error: `Gemini API error: ${response.status}` });
     }
 
     const data = await response.json();
-    console.log('Gemini response received');
-    
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     if (!text) {
-      console.error('No text in Gemini response:', JSON.stringify(data));
-      throw new Error('No content in Gemini response');
+      throw new Error('Empty response from Gemini');
     }
 
-    console.log('Parsing playlist JSON...');
     const clean = text.replace(/```json|```/g, '').trim();
     const playlist = JSON.parse(clean);
 
-    console.log('Playlist generated successfully:', playlist.playlistName);
     return res.status(200).json(playlist);
   } catch (error) {
-    console.error('Playlist generation error:', error.message);
-    return res.status(500).json({ error: `Failed to generate playlist: ${error.message}` });
+    console.error('Error:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 }
