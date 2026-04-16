@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 
-// ─── Spotify OAuth Config ────────────────────────────────────────────────────
-// SETUP: Create a Spotify app at https://developer.spotify.com/dashboard
-// Set Redirect URI to: http://localhost:3000 (or wherever you host this)
+
 const SPOTIFY_CLIENT_ID = process.env.NEXT_SPOTIFY_CLIENT_ID;
+const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API;
 const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : '';
 const SCOPES = "playlist-modify-public playlist-modify-private";
 
