@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 
-const SPOTIFY_CLIENT_ID = process.env.NEXT_SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API;
 const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : '';
 const SCOPES = "playlist-modify-public playlist-modify-private";
@@ -130,18 +130,24 @@ Return ONLY a JSON object in this exact format, no markdown, no preamble, no ext
 }`;
 
 async function generatePlaylist(prompt) {
+  console.log("Sending prompt to API:", prompt);
   const response = await fetch("/api/generate-playlist", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, geminiKey: GEMINI_API_KEY }),
+    body: JSON.stringify({ prompt }),
   });
+
+  console.log("API response status:", response.status);
 
   if (!response.ok) {
     const error = await response.json();
+    console.error("API error:", error);
     throw new Error(error.error || "Failed to generate playlist");
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("Playlist received:", data);
+  return data;
 }
 // ─── Animated Waveform ───────────────────────────────────────────────────────
 function Waveform({ active }) {
