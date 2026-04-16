@@ -58,15 +58,15 @@ CURATION RULES:
 4. Never repeat an artist more than twice in one playlist.
 5. Pick specific, real songs that actually fit the mood.
 6. Playlist name should be evocative and poetic, not literal.
-7. Description should read like liner notes.
+7. Description should read like liner notes - one sentence capturing the emotional experience.
 8. Return exactly 15 tracks.
 
-Return ONLY a JSON object in this exact format, no markdown:
+Return ONLY valid JSON, no markdown, no preamble:
 {
-  "playlistName": "evocative playlist name",
-  "description": "one evocative sentence",
+  "playlistName": "evocative name",
+  "description": "one sentence",
   "tracks": [
-    { "title": "Song Title", "artist": "Artist Name" }
+    { "title": "Song", "artist": "Artist" }
   ]
 }`;
 
@@ -76,60 +76,70 @@ export default async function handler(req, res) {
   }
 
   const { prompt } = req.body;
-  // Use a fallback API key from environment - works with both NEXT_PUBLIC_ and regular env vars
-  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
 
-  console.log('API Key check:', { hasKey: !!geminiApiKey, prompt: prompt ? 'received' : 'missing' });
-
-  if (!geminiApiKey) {
-    console.error('CRITICAL: No Gemini API key found in environment');
-    return res.status(500).json({ error: 'Gemini API key not configured - check environment variables' });
+  if (!apiKey) {
+    return res.status(500).json({ error: 'API key missing' });
   }
 
   if (!prompt?.trim()) {
-    return res.status(400).json({ error: 'Prompt is required' });
+    return res.status(400).json({ error: 'Prompt required' });
   }
 
   try {
-    console.log('Calling Gemini API with key:', geminiApiKey.substring(0, 10) + '...');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + geminiApiKey, {
+    console.log('Calling:', url.replace(apiKey, '***'));
+    
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `${CURATOR_SYSTEM_PROMPT}\n\nUser request: ${prompt}`
-          }]
-        }],
+        contents: [
+          {
+            parts: [
+              {
+                text: `${CURATOR_SYSTEM_PROMPT}\n\nCreate a playlist for this request: ${prompt}`
+              }
+            ]
+          }
+        ],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1200,
         }
-      }),
+      })
     });
 
-    console.log('Gemini API response:', response.status);
+    const responseText = await response.text();
+    console.log('Response status:', response.status);
+    console.log('Response:', responseText.substring(0, 200));
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Gemini error:', error);
-      return res.status(500).json({ error: `Gemini API error: ${response.status}` });
+      console.error('API Error:', responseText);
+      return res.status(response.status).json({ error: `Google API error: ${responseText}` });
     }
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    if (!text) {
-      throw new Error('Empty response from Gemini');
+    const data = JSON.parse(responseText);
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!generatedText) {
+      return res.status(500).json({ error: 'No response from Gemini' });
     }
 
-    const clean = text.replace(/```json|```/g, '').trim();
-    const playlist = JSON.parse(clean);
+    // Clean up JSON
+    let cleanedJson = generatedText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
+    const playlist = JSON.parse(cleanedJson);
     return res.status(200).json(playlist);
+
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
