@@ -133,7 +133,7 @@ async function generatePlaylist(prompt) {
   const response = await fetch("/api/generate-playlist", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, geminiKey: GEMINI_API_KEY }),
   });
 
   if (!response.ok) {
@@ -143,7 +143,6 @@ async function generatePlaylist(prompt) {
 
   return response.json();
 }
-
 // ─── Animated Waveform ───────────────────────────────────────────────────────
 function Waveform({ active }) {
   return (
