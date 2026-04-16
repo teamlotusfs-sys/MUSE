@@ -27,7 +27,7 @@ INDIE / ALTERNATIVE / GUITARS:
   Vibe: guitar-forward, indie sensibility, varying energy
 
 JAZZ / LATE NIGHT SOPHISTICATION:
-  Artists: Miles Davis, John Coltrane, Bill Evans, Chet Baker, Kamasi Washington, Esperanza Spalding, BadBadNotGood, Nubya Garcia, Christian Scott, Robert Glasper, Floating Points
+  Artists: Miles Davis, John Coltrane, Bill Evans, Chet Baker, Kamasi Washington, Esperanza Spalting, BadBadNotGood, Nubya Garcia, Christian Scott, Robert Glasper, Floating Points
   Vibe: improvisational, warm, sophisticated
 
 NOSTALGIA / THROWBACK:
@@ -76,10 +76,14 @@ export default async function handler(req, res) {
   }
 
   const { prompt } = req.body;
-  const geminiApiKey = process.env.NEXT_GEMINI_API;
+  const geminiApiKey = process.env.NEXT_PUBLIC_GEMINI_API;
+
+  console.log('Gemini API Key available:', !!geminiApiKey);
+  console.log('Prompt received:', prompt);
 
   if (!geminiApiKey) {
-    return res.status(500).json({ error: 'Missing Gemini API key' });
+    console.error('CRITICAL: Gemini API key not found!');
+    return res.status(500).json({ error: 'Gemini API key not configured' });
   }
 
   if (!prompt?.trim()) {
@@ -87,6 +91,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('Calling Gemini API...');
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + geminiApiKey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -103,25 +108,32 @@ export default async function handler(req, res) {
       }),
     });
 
+    console.log('Gemini response status:', response.status);
+
     if (!response.ok) {
       const error = await response.text();
       console.error('Gemini API error:', error);
-      return res.status(500).json({ error: `Gemini API error: ${response.statusText}` });
+      return res.status(500).json({ error: `Gemini API error: ${response.status} ${error}` });
     }
 
     const data = await response.json();
+    console.log('Gemini response received');
+    
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     
     if (!text) {
+      console.error('No text in Gemini response:', JSON.stringify(data));
       throw new Error('No content in Gemini response');
     }
 
+    console.log('Parsing playlist JSON...');
     const clean = text.replace(/```json|```/g, '').trim();
     const playlist = JSON.parse(clean);
 
+    console.log('Playlist generated successfully:', playlist.playlistName);
     return res.status(200).json(playlist);
   } catch (error) {
-    console.error('Playlist generation error:', error);
+    console.error('Playlist generation error:', error.message);
     return res.status(500).json({ error: `Failed to generate playlist: ${error.message}` });
   }
 }
