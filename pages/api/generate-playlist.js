@@ -58,7 +58,7 @@ CURATION RULES:
 4. Never repeat an artist more than twice in one playlist.
 5. Pick specific, real songs that actually fit the mood.
 6. Playlist name should be evocative and poetic, not literal.
-7. Description should read like liner notes - one sentence capturing the emotional experience.
+7. Description should read like liner notes.
 8. Return exactly 15 tracks.
 
 Return ONLY valid JSON, no markdown, no preamble:
@@ -78,6 +78,9 @@ export default async function handler(req, res) {
   const { prompt } = req.body;
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
 
+  console.log('API Key exists:', !!apiKey);
+  console.log('Prompt:', prompt);
+
   if (!apiKey) {
     return res.status(500).json({ error: 'API key missing' });
   }
@@ -87,9 +90,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Use v1 instead of v1beta
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
-    console.log('Calling:', url.replace(apiKey, '***'));
+    console.log('Calling Gemini API...');
     
     const response = await fetch(url, {
       method: 'POST',
@@ -115,11 +119,10 @@ export default async function handler(req, res) {
 
     const responseText = await response.text();
     console.log('Response status:', response.status);
-    console.log('Response:', responseText.substring(0, 200));
 
     if (!response.ok) {
-      console.error('API Error:', responseText);
-      return res.status(response.status).json({ error: `Google API error: ${responseText}` });
+      console.error('Gemini API Error:', responseText);
+      return res.status(response.status).json({ error: `Gemini error: ${responseText}` });
     }
 
     const data = JSON.parse(responseText);
@@ -130,7 +133,7 @@ export default async function handler(req, res) {
     }
 
     // Clean up JSON
-    let cleanedJson = generatedText
+    const cleanedJson = generatedText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
@@ -139,7 +142,7 @@ export default async function handler(req, res) {
     return res.status(200).json(playlist);
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
