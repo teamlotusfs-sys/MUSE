@@ -79,7 +79,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
 
   console.log('API Key exists:', !!apiKey);
-  console.log('Prompt:', prompt);
+  console.log('Prompt received:', prompt);
 
   if (!apiKey) {
     return res.status(500).json({ error: 'API key missing' });
@@ -90,8 +90,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Use v1 instead of v1beta
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // CORRECT Google Generative Language API endpoint with v1beta
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
     
     console.log('Calling Gemini API...');
     
@@ -99,6 +99,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,  // ✅ Correct way to pass API key
       },
       body: JSON.stringify({
         contents: [
@@ -119,6 +120,7 @@ export default async function handler(req, res) {
 
     const responseText = await response.text();
     console.log('Response status:', response.status);
+    console.log('Response body:', responseText.substring(0, 300));
 
     if (!response.ok) {
       console.error('Gemini API Error:', responseText);
@@ -132,13 +134,14 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No response from Gemini' });
     }
 
-    // Clean up JSON
+    // Clean up JSON if it has markdown code blocks
     const cleanedJson = generatedText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
 
     const playlist = JSON.parse(cleanedJson);
+    console.log('Playlist generated:', playlist.playlistName);
     return res.status(200).json(playlist);
 
   } catch (error) {
