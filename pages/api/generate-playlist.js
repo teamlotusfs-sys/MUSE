@@ -77,10 +77,10 @@ export default async function handler(req, res) {
 
   const { prompt } = req.body;
   
-  const apiKey = process.env.CLAUDE_API_KEY;
+  const apiKey = process.env.HF_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'Claude API key is not configured' });
+    return res.status(500).json({ error: 'Hugging Face API key is not configured' });
   }
 
   if (!prompt || !prompt.trim()) {
@@ -88,40 +88,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: `${CURATOR_SYSTEM_PROMPT}\n\nCreate a playlist for this request: ${prompt}`,
+    const response = await fetch(
+      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        method: 'POST',
+        body: JSON.stringify({
+          inputs: `${CURATOR_SYSTEM_PROMPT}\n\nCreate a playlist for this request: ${prompt}`,
+          parameters: {
+            max_new_tokens: 1024,
+            temperature: 0.7,
           },
-        ],
-      }),
-    });
+        }),
+      }
+    );
 
-    const responseText = await response.text();
+    const result = await response.json();
 
     if (!response.ok) {
-      console.error('Claude API error:', responseText);
+      console.error('Hugging Face error:', result);
       return res.status(502).json({ error: 'AI service error' });
     }
 
-    const data = JSON.parse(responseText);
-    const generatedText = data.content?.[0]?.text;
+    const generatedText = result[0]?.generated_text;
 
     if (!generatedText) {
       return res.status(500).json({ error: 'No response from AI service' });
     }
 
-    const cleanedJson = generatedText
+    // Extract just the generated part (remove prompt)
+    const promptLength = CURATOR_SYSTEM_PROMPT.length + prompt.length + 40;
+    const cleanedText = generatedText.substring(promptLength);
+
+    const cleanedJson = cleanedText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
