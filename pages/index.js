@@ -53,21 +53,38 @@ function AudioPlayer({ previewUrl, trackTitle }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef(null);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async (e) => {
+    e.stopPropagation();
     if (!previewUrl) return;
     
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(err => {
-          console.error("Error playing audio:", err);
+    try {
+      if (audioRef.current) {
+        if (isPlaying) {
+          audioRef.current.pause();
           setIsPlaying(false);
-        });
+        } else {
+          setIsLoading(true);
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsLoading(false);
+                setIsPlaying(true);
+              })
+              .catch((err) => {
+                console.error("Play error:", err);
+                setIsLoading(false);
+                setIsPlaying(false);
+              });
+          }
+        }
       }
-      setIsPlaying(!isPlaying);
+    } catch (err) {
+      console.error("Error in handlePlayPause:", err);
+      setIsLoading(false);
     }
   };
 
@@ -75,18 +92,41 @@ function AudioPlayer({ previewUrl, trackTitle }) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleEnded = () => setIsPlaying(false);
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+
+    const handleError = (e) => {
+      console.error("Audio error:", e);
+      setIsPlaying(false);
+      setIsLoading(false);
+    };
 
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("error", handleError);
     };
   }, []);
 
@@ -94,15 +134,16 @@ function AudioPlayer({ previewUrl, trackTitle }) {
     return (
       <div
         style={{
-          width: 40,
-          height: 40,
+          width: 44,
+          height: 44,
           borderRadius: "50%",
-          background: "rgba(255,255,255,0.1)",
+          background: "rgba(255,255,255,0.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 12,
-          color: "#999",
+          color: "#666",
+          cursor: "not-allowed",
         }}
         title="No preview available"
       >
@@ -114,50 +155,59 @@ function AudioPlayer({ previewUrl, trackTitle }) {
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <button
         onClick={handlePlayPause}
+        disabled={isLoading}
         style={{
-          width: 40,
-          height: 40,
+          width: 44,
+          height: 44,
           borderRadius: "50%",
-          background: isPlaying ? "#00d4ff" : "rgba(0,212,255,0.2)",
-          border: "1px solid rgba(0,212,255,0.4)",
-          color: isPlaying ? "#000" : "#00d4ff",
-          fontSize: 16,
-          cursor: "pointer",
+          background: isPlaying ? "linear-gradient(135deg, #00d4ff, #0099ff)" : "rgba(0,212,255,0.15)",
+          border: "2px solid " + (isPlaying ? "#00d4ff" : "rgba(0,212,255,0.3)"),
+          color: isPlaying ? "#fff" : "#00d4ff",
+          fontSize: 18,
+          cursor: isLoading ? "loading" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "all 0.2s",
+          transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
           fontWeight: "bold",
           flexShrink: 0,
+          boxShadow: isPlaying ? "0 0 20px rgba(0,212,255,0.4), inset 0 0 10px rgba(0,212,255,0.2)" : "none",
+          transform: isPlaying ? "scale(1.05)" : "scale(1)",
+          opacity: isLoading ? 0.7 : 1,
         }}
         onMouseEnter={(e) => {
-          if (!isPlaying) {
-            e.currentTarget.style.background = "rgba(0,212,255,0.3)";
-            e.currentTarget.style.boxShadow = "0 0 12px rgba(0,212,255,0.3)";
+          if (!isLoading && !isPlaying) {
+            e.currentTarget.style.background = "rgba(0,212,255,0.25)";
+            e.currentTarget.style.boxShadow = "0 0 20px rgba(0,212,255,0.3)";
+            e.currentTarget.style.transform = "scale(1.1)";
           }
         }}
         onMouseLeave={(e) => {
-          if (!isPlaying) {
-            e.currentTarget.style.background = "rgba(0,212,255,0.2)";
+          if (!isLoading && !isPlaying) {
+            e.currentTarget.style.background = "rgba(0,212,255,0.15)";
             e.currentTarget.style.boxShadow = "none";
+            e.currentTarget.style.transform = "scale(1)";
           }
         }}
       >
-        {isPlaying ? "⏸" : "▶"}
+        {isLoading ? "⏳" : isPlaying ? "⏸" : "▶"}
       </button>
       
-      <div style={{ width: 60, height: 4, background: "rgba(0,212,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
-        <div 
-          style={{ 
-            height: "100%", 
-            background: "#00d4ff", 
-            width: `${progressPercent}%`,
-            transition: "width 0.1s linear"
-          }} 
-        />
+      <div style={{ width: 50, display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ width: 50, height: 3, background: "rgba(0,212,255,0.15)", borderRadius: 2, overflow: "hidden" }}>
+          <div 
+            style={{ 
+              height: "100%", 
+              background: "linear-gradient(90deg, #00d4ff, #2563eb)",
+              width: `${progressPercent}%`,
+              transition: "width 0.1s linear",
+            }} 
+          />
+        </div>
+        <span style={{ fontSize: 10, color: "#666", minWidth: 30 }}>{Math.floor(currentTime)}s</span>
       </div>
 
       <audio 
@@ -167,6 +217,7 @@ function AudioPlayer({ previewUrl, trackTitle }) {
         onError={(e) => {
           console.error("Audio error:", e);
           setIsPlaying(false);
+          setIsLoading(false);
         }}
       />
     </div>
@@ -274,21 +325,37 @@ function SongOfTheDayCard({ song }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef(null);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (!song.previewUrl) return;
     
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(err => {
-          console.error("Error playing audio:", err);
+    try {
+      if (audioRef.current) {
+        if (isPlaying) {
+          audioRef.current.pause();
           setIsPlaying(false);
-        });
+        } else {
+          setIsLoading(true);
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsLoading(false);
+                setIsPlaying(true);
+              })
+              .catch((err) => {
+                console.error("Play error:", err);
+                setIsLoading(false);
+                setIsPlaying(false);
+              });
+          }
+        }
       }
-      setIsPlaying(!isPlaying);
+    } catch (err) {
+      console.error("Error in handlePlayPause:", err);
+      setIsLoading(false);
     }
   };
 
@@ -296,18 +363,41 @@ function SongOfTheDayCard({ song }) {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleEnded = () => setIsPlaying(false);
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+    
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+
+    const handleError = (e) => {
+      console.error("Audio error:", e);
+      setIsPlaying(false);
+      setIsLoading(false);
+    };
 
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("error", handleError);
     };
   }, []);
 
@@ -413,47 +503,56 @@ function SongOfTheDayCard({ song }) {
           </div>
 
           {song.previewUrl && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <button
                 onClick={handlePlayPause}
+                disabled={isLoading}
                 style={{
                   padding: "16px 32px",
                   borderRadius: 12,
-                  background: isPlaying ? "#00d4ff" : "linear-gradient(135deg, #00d4ff, #2563eb)",
+                  background: isPlaying ? "linear-gradient(135deg, #00d4ff, #0099ff)" : "linear-gradient(135deg, #00d4ff, #2563eb)",
                   border: "none",
-                  color: isPlaying ? "#000" : "#fff",
+                  color: "#000",
                   fontSize: 16,
                   fontWeight: 700,
-                  cursor: "pointer",
-                  transition: "all 0.3s",
+                  cursor: isLoading ? "loading" : "pointer",
+                  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
                   boxShadow: "0 8px 24px rgba(0,212,255,0.25)",
+                  opacity: isLoading ? 0.7 : 1,
+                  transform: isPlaying ? "scale(1.02)" : "scale(1)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,212,255,0.35)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
+                  if (!isLoading) {
+                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,212,255,0.4)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,212,255,0.25)";
-                  e.currentTarget.style.transform = "translateY(0)";
+                  if (!isLoading) {
+                    e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,212,255,0.25)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
                 }}
               >
-                {isPlaying ? "⏸ Playing" : "▶ Preview"}
+                {isLoading ? "⏳ Loading..." : isPlaying ? "⏸ Pause" : "▶ Play Preview"}
               </button>
               
-              <div style={{ width: "100%", height: 4, background: "rgba(0,212,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
-                <div 
-                  style={{ 
-                    height: "100%", 
-                    background: "#00d4ff", 
-                    width: `${progressPercent}%`,
-                    transition: "width 0.1s linear"
-                  }} 
-                />
-              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ width: "100%", height: 4, background: "rgba(0,212,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                  <div 
+                    style={{ 
+                      height: "100%", 
+                      background: "linear-gradient(90deg, #00d4ff, #2563eb)",
+                      width: `${progressPercent}%`,
+                      transition: "width 0.1s linear",
+                    }} 
+                  />
+                </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#555" }}>
-                <span>{Math.floor(currentTime)}s</span>
-                <span>{Math.floor(duration)}s</span>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666" }}>
+                  <span>{Math.floor(currentTime)}s</span>
+                  <span>{Math.floor(duration)}s</span>
+                </div>
               </div>
             </div>
           )}
@@ -465,6 +564,7 @@ function SongOfTheDayCard({ song }) {
             onError={(e) => {
               console.error("Audio error:", e);
               setIsPlaying(false);
+              setIsLoading(false);
             }}
           />
         </div>
@@ -1511,4 +1611,3 @@ export default function App() {
     </div>
   );
 }
-              
