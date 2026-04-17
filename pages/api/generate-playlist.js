@@ -56,9 +56,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
-  try {
+try {
     const client = new OpenAI({
-      apiKey: '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',
+      apiKey: process.env.GROQ_API_KEY,
       baseURL: "https://api.groq.com/openai/v1",
     });
 
