@@ -268,20 +268,23 @@ export default function App() {
                     {spotifyUser?.display_name || "Connected"}
                   </span>
                 </div>
-               <button
+              <button
   onClick={async () => {
-    // Clear localStorage and sessionStorage
+    // Clear all storage
     localStorage.clear();
     sessionStorage.clear();
     
-    // Clear the cookie
-    await fetch("/api/auth/logout", { method: "POST" });
+    // Clear the cookie by setting it to expire
+    document.cookie = 'spotify_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
-    // Reset state
+    // Reset state and redirect
     setSpotifyToken(null);
     setSpotifyUser(null);
     
-    // Redirect to home
+    // Call logout API
+    await fetch("/api/auth/logout", { method: "POST" });
+    
+    // Full page reload to clear everything
     window.location.href = '/';
   }}
   style={{
