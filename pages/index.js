@@ -346,7 +346,33 @@ export default function App() {
               </div>
             )}
           </div>
-
+) : (
+  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 100, background: "rgba(29,185,84,0.1)", border: "1px solid rgba(29,185,84,0.2)" }}>
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
+      <span style={{ color: "#1DB954", fontSize: 13 }}>
+        {spotifyUser?.display_name || "Connected"}
+      </span>
+    </div>
+    <button
+      onClick={async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
+        setSpotifyToken(null);
+        setSpotifyUser(null);
+      }}
+      style={{
+        padding: "8px 16px", borderRadius: 100,
+        background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
+        color: "#aaa", fontSize: 13, fontWeight: 500, cursor: "pointer",
+        transition: "all 0.2s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+      onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
+    >
+      Logout
+    </button>
+  </div>
+)}
           <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 42, fontWeight: 300, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#fff" }}>
             Describe your<br />
             <em style={{ fontStyle: "italic", color: "#1DB954" }}>perfect playlist.</em>
