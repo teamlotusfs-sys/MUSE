@@ -56,9 +56,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
-try {
+  // DEBUG: Check if env vars exist
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+  console.log('API Key exists:', !!apiKey);
+  console.log('GROQ_API_KEY:', !!process.env.GROQ_API_KEY);
+  console.log('OPENAI_API_KEY:', !!process.env.OPENAI_API_KEY);
+
+  if (!apiKey) {
+    return res.status(500).json({ 
+      error: 'API key not configured. Check GROQ_API_KEY or OPENAI_API_KEY in environment variables.' 
+    });
+  }
+
+  try {
     const client = new OpenAI({
-      apiKey: process.env.GROQ_API_KEY,
+      apiKey: apiKey,
       baseURL: "https://api.groq.com/openai/v1",
     });
 
