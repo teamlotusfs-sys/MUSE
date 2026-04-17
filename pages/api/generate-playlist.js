@@ -1,116 +1,111 @@
+const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic knowledge of music across all genres and eras. Your playlists are genuinely great — not generic, not obvious.
+
+MOOD-TO-ARTIST REFERENCE GUIDE:
+
+LATE NIGHT / CITY / NOCTURNAL:
+  Artists: The Weeknd, Frank Ocean, James Blake, Sade, Com Truise, Kavinsky, Floating Points, Massive Attack, Portishead, Banks, How To Dress Well, Rhye, Majid Jordan, dvsn, Kaytranada, Blood Orange
+  Vibe: atmospheric, sensual, slow-burning, urban
+
+MELANCHOLY / HEARTBREAK / INTROSPECTION:
+  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine
+  Vibe: sparse, raw, emotionally heavy, intimate
+
+EUPHORIC / JOYFUL / SUMMER:
+  Artists: Daft Punk, Pharrell Williams, Lizzo, Carly Rae Jepsen, MNEK, Chromeo, Jungle, Parcels, Franc Moody, Surfaces, Still Woozy, Rex Orange County
+  Vibe: bright, danceable, warm, feels-good
+
+FOCUS / STUDY / DEEP WORK:
+  Artists: Brian Eno, Nils Frahm, Max Richter, Ólafur Arnalds, Four Tet, Jon Hopkins, Tycho, Bonobo, Kiasmos, Rival Consoles, Hammock, Hiroshi Yoshimura
+  Vibe: minimal, textural, no lyrics, low distraction
+
+HYPE / ENERGY / WORKOUT:
+  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin
+  Vibe: aggressive, high-tempo, adrenaline
+
+INDIE / ALTERNATIVE / GUITARS:
+  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust
+  Vibe: guitar-forward, indie sensibility, varying energy
+
+CURATION RULES:
+1. Mix 60% well-known tracks with 40% deeper cuts.
+2. Think about arc and flow: beginning, middle, and end.
+3. Never repeat an artist more than twice.
+4. Pick specific, real songs that actually fit the mood.
+5. Return exactly 15 tracks.
+
+Return ONLY valid JSON:
+{
+  "playlistName": "evocative name",
+  "description": "one sentence",
+  "tracks": [
+    { "title": "Song", "artist": "Artist" }
+  ]
+}`;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { prompt } = req.body;
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Groq API key not configured' });
+  }
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
-  // Simple AI-like playlist generator (no API needed)
-  const playlists = {
-    'late night': {
-      playlistName: 'Neon Nights',
-      description: 'Atmospheric tracks for late-night drives through empty streets.',
-      tracks: [
-        { title: 'Blinding Lights', artist: 'The Weeknd' },
-        { title: 'Skin', artist: 'Rihanna' },
-        { title: 'Lost', artist: 'Frank Ocean' },
-        { title: 'Golden', artist: 'Harry Styles' },
-        { title: 'Levitating', artist: 'Dua Lipa' },
-        { title: 'Midnight Pretenders', artist: 'The Weeknd' },
-        { title: 'Ivy', artist: 'Frank Ocean' },
-        { title: 'Nights', artist: 'Frank Ocean' },
-        { title: 'Alone, Pt. II', artist: 'Alan Walker' },
-        { title: 'Without Me', artist: 'Halsey' },
-        { title: 'Bad Habit', artist: 'Steve Lacy' },
-        { title: 'Feels Like Home', artist: 'Sabrina Carpenter' },
-        { title: 'Redbone', artist: 'Childish Gambino' },
-        { title: 'Summertime Sadness', artist: 'Lana Del Rey' },
-        { title: 'Die For You', artist: 'The Weeknd' }
-      ]
-    },
-    'love': {
-      playlistName: 'Falling Slow',
-      description: 'Songs that capture the feeling of gradually falling in love.',
-      tracks: [
-        { title: 'Falling', artist: 'Harry Styles' },
-        { title: 'Lovers', artist: 'Anna of the North' },
-        { title: 'Best Day of My Life', artist: 'American Authors' },
-        { title: 'Someone Like You', artist: 'Adele' },
-        { title: 'All Too Well', artist: 'Taylor Swift' },
-        { title: 'Thinking Out Loud', artist: 'Ed Sheeran' },
-        { title: 'Golden Hour', artist: 'JVKE' },
-        { title: 'Enchanted', artist: 'Taylor Swift' },
-        { title: 'Perfect', artist: 'Ed Sheeran' },
-        { title: 'Kiss Me', artist: 'Sixpence None The Richer' },
-        { title: 'Romantic Homicide', artist: 'd4vd' },
-        { title: 'Lover', artist: 'Taylor Swift' },
-        { title: 'She Will Be Loved', artist: 'Maroon 5' },
-        { title: 'Your Body Is a Wonderland', artist: 'John Mayer' },
-        { title: 'Chasing Cars', artist: 'Snow Patrol' }
-      ]
-    },
-    'study': {
-      playlistName: 'Deep Focus',
-      description: 'Instrumental and ambient tracks designed for concentration.',
-      tracks: [
-        { title: 'Weightless', artist: 'Marconi Union' },
-        { title: 'Mind Clearer', artist: 'Ólafur Arnalds' },
-        { title: 'Nuvole Bianche', artist: 'Ludovico Einaudi' },
-        { title: 'Fly', artist: 'Ludovico Einaudi' },
-        { title: 'The Tower', artist: 'Max Richter' },
-        { title: 'Svefn-g-englar', artist: 'Sigur Rós' },
-        { title: 'Clocks', artist: 'Coldplay' },
-        { title: 'Arrival of the Birds', artist: 'Jon Hopkins' },
-        { title: 'Holocene', artist: 'Bon Iver' },
-        { title: 'Intro', artist: 'The xx' },
-        { title: 'Requiem for the Innocent', artist: 'Globus' },
-        { title: 'A Question of Time', artist: 'Ivan Torrent' },
-        { title: 'Endeavour', artist: 'Cinematic Strings' },
-        { title: 'Meteora', artist: 'Two Steps to Hell' },
-        { title: 'Escape', artist: 'Enrique Iglesias' }
-      ]
-    },
-    'workout': {
-      playlistName: 'Maximum Energy',
-      description: 'High-energy tracks to power through any workout.',
-      tracks: [
-        { title: 'Stronger', artist: 'Kanye West' },
-        { title: 'Till I Collapse', artist: 'Eminem' },
-        { title: 'Lose Yourself', artist: 'Eminem' },
-        { title: 'High for This', artist: 'The Weeknd' },
-        { title: 'Uptown Funk', artist: 'Mark Ronson' },
-        { title: 'Play That Funky Music', artist: 'Wild Cherry' },
-        { title: 'One Kiss', artist: 'Calvin Harris' },
-        { title: 'Titanium', artist: 'David Guetta' },
-        { title: 'Animals', artist: 'Martin Garrix' },
-        { title: 'Lean On', artist: 'Major Lazer' },
-        { title: 'Shut Up and Dance', artist: 'Walk the Moon' },
-        { title: 'Pump It Up', artist: 'Endor' },
-        { title: 'Echoes', artist: 'Edith Whiskers' },
-        { title: 'Energy', artist: 'Fatboy Slim' },
-        { title: 'Turn Down for What', artist: 'DJ Snake' }
-      ]
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'mixtral-8x7b-32768',
+        messages: [
+          {
+            role: 'system',
+            content: CURATOR_SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: `Create a 15-track playlist for: ${prompt}`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Groq error:', data);
+      return res.status(502).json({ error: 'Groq API error' });
     }
-  };
 
-  // Find matching playlist based on prompt keywords
-  let selectedPlaylist = playlists.study; // default
+    const generatedText = data.choices?.[0]?.message?.content;
 
-  const lowerPrompt = prompt.toLowerCase();
-  
-  if (lowerPrompt.includes('late') || lowerPrompt.includes('night') || lowerPrompt.includes('drive')) {
-    selectedPlaylist = playlists['late night'];
-  } else if (lowerPrompt.includes('love') || lowerPrompt.includes('falling') || lowerPrompt.includes('romantic')) {
-    selectedPlaylist = playlists.love;
-  } else if (lowerPrompt.includes('study') || lowerPrompt.includes('work') || lowerPrompt.includes('focus')) {
-    selectedPlaylist = playlists.study;
-  } else if (lowerPrompt.includes('workout') || lowerPrompt.includes('gym') || lowerPrompt.includes('hype') || lowerPrompt.includes('energy')) {
-    selectedPlaylist = playlists.workout;
+    if (!generatedText) {
+      return res.status(500).json({ error: 'No response from AI' });
+    }
+
+    const cleanedJson = generatedText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+
+    const playlist = JSON.parse(cleanedJson);
+    return res.status(200).json(playlist);
+
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(500).json({ error: error.message });
   }
-
-  return res.status(200).json(selectedPlaylist);
 }
