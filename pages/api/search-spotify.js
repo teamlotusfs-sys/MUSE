@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      return res.status(200).json({ imageUrl: null });
+      return res.status(200).json({ imageUrl: null, previewUrl: null });
     }
 
     // Get access token
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     });
 
     if (!tokenRes.ok) {
-      return res.status(200).json({ imageUrl: null });
+      return res.status(200).json({ imageUrl: null, previewUrl: null });
     }
 
     const tokenData = await tokenRes.json();
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     );
 
     if (!searchRes.ok) {
-      return res.status(200).json({ imageUrl: null });
+      return res.status(200).json({ imageUrl: null, previewUrl: null });
     }
 
     let data = await searchRes.json();
@@ -66,12 +66,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // Get the largest album image available
+    // Get the largest album image available and preview URL
     const imageUrl = track?.album?.images?.[0]?.url || null;
+    const previewUrl = track?.preview_url || null;
 
-    return res.status(200).json({ imageUrl });
+    return res.status(200).json({ imageUrl, previewUrl });
   } catch (error) {
     console.error('Spotify search error:', error);
-    return res.status(200).json({ imageUrl: null });
+    return res.status(200).json({ imageUrl: null, previewUrl: null });
   }
 }
