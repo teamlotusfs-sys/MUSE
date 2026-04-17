@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   }
 
   const { prompt } = req.body;
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = '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';
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Groq API key not configured' });
