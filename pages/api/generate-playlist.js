@@ -1,3 +1,5 @@
+import OpenAI from "openai";
+
 const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic knowledge of music across all genres and eras. Your playlists are genuinely great — not generic, not obvious.
 
 MOOD-TO-ARTIST REFERENCE GUIDE:
@@ -49,48 +51,33 @@ export default async function handler(req, res) {
   }
 
   const { prompt } = req.body;
-  const apiKey = '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';
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Groq API key not configured' });
-  }
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'mixtral-8x7b-32768',
-        messages: [
-          {
-            role: 'system',
-            content: CURATOR_SYSTEM_PROMPT,
-          },
-          {
-            role: 'user',
-            content: `Create a 15-track playlist for: ${prompt}`,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 1024,
-      }),
+    const client = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: "https://api.groq.com/openai/v1",
     });
 
-    const data = await response.json();
+    const message = await client.messages.create({
+      model: "mixtral-8x7b-32768",
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "system",
+          content: CURATOR_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: `Create a 15-track playlist for: ${prompt}`,
+        },
+      ],
+    });
 
-    if (!response.ok) {
-      console.error('Groq error:', data);
-      return res.status(502).json({ error: 'Groq API error' });
-    }
-
-    const generatedText = data.choices?.[0]?.message?.content;
+    const generatedText = message.content[0].text;
 
     if (!generatedText) {
       return res.status(500).json({ error: 'No response from AI' });
