@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      return res.status(200).json({ imageUrl: null, previewUrl: null });
+      console.warn('Spotify credentials not configured');
+      return res.status(200).json({ imageUrl: null, previewUrl: null, spotifyUrl: null });
     }
 
     // Get access token
@@ -28,35 +29,42 @@ export default async function handler(req, res) {
     });
 
     if (!tokenRes.ok) {
-      return res.status(200).json({ imageUrl: null, previewUrl: null });
+      console.error('Failed to get Spotify token');
+      return res.status(200).json({ imageUrl: null, previewUrl: null, spotifyUrl: null });
     }
 
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
-    // Try exact search first (artist + track name)
+    // Try exact search first
     let searchQuery = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
     let searchRes = await fetch(
       `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=5`,
       {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { 
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
       }
     );
 
     if (!searchRes.ok) {
-      return res.status(200).json({ imageUrl: null, previewUrl: null });
+      return res.status(200).json({ imageUrl: null, previewUrl: null, spotifyUrl: null });
     }
 
     let data = await searchRes.json();
     let track = data.tracks?.items?.[0];
 
-    // If no exact match, try looser search with just track name
+    // If no exact match, try looser search
     if (!track) {
       searchQuery = encodeURIComponent(`${title}`);
       searchRes = await fetch(
         `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
         {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: { 
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
         }
       );
 
@@ -66,13 +74,18 @@ export default async function handler(req, res) {
       }
     }
 
-    // Get the largest album image available and preview URL
-    const imageUrl = track?.album?.images?.[0]?.url || null;
-    const previewUrl = track?.preview_url || null;
+    if (track) {
+      return res.status(200).json({
+        imageUrl: track.album?.images?.[0]?.url || null,
+        previewUrl: track.preview_url || null,
+        spotifyUrl: track.external_urls?.spotify || null,
+      });
+    }
 
-    return res.status(200).json({ imageUrl, previewUrl });
+    return res.status(200).json({ imageUrl: null, previewUrl: null, spotifyUrl: null });
+
   } catch (error) {
     console.error('Spotify search error:', error);
-    return res.status(200).json({ imageUrl: null, previewUrl: null });
+    return res.status(200).json({ imageUrl: null, previewUrl: null, spotifyUrl: null });
   }
 }
