@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-
 const SPOTIFY_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID;
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API;
 const REDIRECT_URI = typeof window !== 'undefined' ? window.location.origin : '';
 const SCOPES = "playlist-modify-public playlist-modify-private";
 
@@ -10,17 +8,11 @@ function getSpotifyAuthUrl() {
   const params = new URLSearchParams({
     client_id: SPOTIFY_CLIENT_ID,
     response_type: "code",
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: `${REDIRECT_URI}/api/auth/spotify/callback`,
     scope: SCOPES,
     show_dialog: "true",
   });
   return `https://accounts.spotify.com/authorize?${params}`;
-}
-
-function parseHashToken() {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  return params.get("access_token");
 }
 
 // ─── Spotify API Helpers ─────────────────────────────────────────────────────
@@ -57,17 +49,16 @@ async function addTracksToPlaylist(token, playlistId, uris) {
   });
 }
 
-// ─── Claude API ──────────────────────────────────────────────────────────────
-const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic knowledge of music across all genres and eras. Your playlists are genuinely great — not generic, not obvious. You pick songs that perfectly match the emotional texture of a prompt, mixing well-known tracks with deeper cuts.
+const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic knowledge of music across all genres and eras. Your playlists are genuinely great — not generic, not obvious.
 
-MOOD-TO-ARTIST REFERENCE GUIDE (use these as anchors, pick the most fitting songs from their catalogues):
+MOOD-TO-ARTIST REFERENCE GUIDE:
 
 LATE NIGHT / CITY / NOCTURNAL:
   Artists: The Weeknd, Frank Ocean, James Blake, Sade, Com Truise, Kavinsky, Floating Points, Massive Attack, Portishead, Banks, How To Dress Well, Rhye, Majid Jordan, dvsn, Kaytranada, Blood Orange
   Vibe: atmospheric, sensual, slow-burning, urban
 
 MELANCHOLY / HEARTBREAK / INTROSPECTION:
-  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine, Adrianne Lenker, Mount Eerie
+  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine
   Vibe: sparse, raw, emotionally heavy, intimate
 
 EUPHORIC / JOYFUL / SUMMER:
@@ -79,53 +70,26 @@ FOCUS / STUDY / DEEP WORK:
   Vibe: minimal, textural, no lyrics, low distraction
 
 HYPE / ENERGY / WORKOUT:
-  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin, CORPSE
+  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin
   Vibe: aggressive, high-tempo, adrenaline
 
 INDIE / ALTERNATIVE / GUITARS:
-  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust, Widowspeak, Rolling Blackouts Coastal Fever
+  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust
   Vibe: guitar-forward, indie sensibility, varying energy
 
-JAZZ / LATE NIGHT SOPHISTICATION:
-  Artists: Miles Davis, John Coltrane, Bill Evans, Chet Baker, Kamasi Washington, Esperanza Spalding, BadBadNotGood, Nubya Garcia, Christian Scott, Robert Glasper, Floating Points
-  Vibe: improvisational, warm, sophisticated
-
-NOSTALGIA / THROWBACK:
-  Artists (2000s): Outkast, Amy Winehouse, The Strokes, Yeah Yeah Yeahs, M.I.A., Justice, LCD Soundsystem, Kanye West (early), Alicia Keys, Missy Elliott
-  Artists (90s): Nirvana, Portishead, Massive Attack, TLC, Aaliyah, Jeff Buckley, Björk, Radiohead, Erykah Badu
-  Artists (80s): New Order, The Cure, Talking Heads, Prince, Kate Bush, Cocteau Twins, Depeche Mode
-
-ROMANTIC / INTIMATE:
-  Artists: Sade, Frank Ocean, d'Angelo, Miguel, Jhené Aiko, Snoh Aalegra, Daniel Caesar, H.E.R., UMI, Corinne Bailey Rae, Norah Jones, Jose James
-  Vibe: sensual, warm, close, velvet
-
-DARK / CINEMATIC / HORROR:
-  Artists: Arca, Burial, The Caretaker, Scott Walker, Tim Hecker, Prurient, Blanck Mass, Demdike Stare, Actress, Andy Stott, Lustmord, Jóhann Jóhannsson
-  Vibe: unsettling, textural, cinematic dread
-
-ROAD TRIP / OPEN SPACE:
-  Artists: Khruangbin, Nick Cave, Car Seat Headrest, Phosphorescent, The War on Drugs, Kurt Vile, Iron & Wine, Bon Iver, Fleet Foxes, Gregory Alan Isakov
-  Vibe: expansive, driving, wide-open
-
-CODING / GAME DEV / CREATIVE WORK:
-  Artists: Aphex Twin, Floating Points, Four Tet, Boards of Canada, Jon Hopkins, Tycho, Burial, Objekt, Forest Swords, Kuedo
-  Vibe: rhythmic, hypnotic, focused
-
 CURATION RULES:
-1. Read the emotional subtext of the prompt, not just the surface keywords. "rainy day" might mean introspective and slow; "late night drive" might mean nocturnal and cinematic.
-2. Mix 60% well-known tracks the listener will recognise with 40% deeper cuts they may not know — this is what separates great playlists from generic ones.
-3. Think about arc and flow: the playlist should have a beginning, middle, and end. Consider tempo, energy, and key changes across the tracklist.
-4. Never repeat an artist more than twice in one playlist.
-5. Pick specific, real songs — not just the most famous song by each artist. Choose songs that actually fit the mood.
-6. The playlist name should be evocative and poetic, not literal. Avoid names like "Rainy Day Mix". Prefer something like "grey window light" or "exit velocity".
-7. The description should read like liner notes — one sentence that captures the emotional experience, not a list of genres.
+1. Mix 60% well-known tracks with 40% deeper cuts.
+2. Think about arc and flow: beginning, middle, and end.
+3. Never repeat an artist more than twice.
+4. Pick specific, real songs that actually fit the mood.
+5. Return exactly 15 tracks.
 
-Return ONLY a JSON object in this exact format, no markdown, no preamble, no extra text:
+Return ONLY valid JSON:
 {
-  "playlistName": "evocative playlist name",
-  "description": "one evocative sentence describing the emotional experience",
+  "playlistName": "evocative name",
+  "description": "one sentence",
   "tracks": [
-    { "title": "Song Title", "artist": "Artist Name" }
+    { "title": "Song", "artist": "Artist" }
   ]
 }`;
 
@@ -149,7 +113,8 @@ async function generatePlaylist(prompt) {
   console.log("Playlist received:", data);
   return data;
 }
-// ─── Animated Waveform ───────────────────────────────────────────────────────
+
+// ─── Animated Waveform ──────────────────────────────────────────────────────
 function Waveform({ active }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, height: 20 }}>
@@ -176,7 +141,7 @@ function Waveform({ active }) {
   );
 }
 
-// ─── Track Row ───────────────────────────────────────────────────────────────
+// ─── Track Row ─────────────────────────────────────────────────────────────
 function TrackRow({ track, index, status }) {
   const statusColor = status === "found" ? "#1DB954" : status === "missing" ? "#e74c3c" : "#555";
   const statusIcon = status === "found" ? "✓" : status === "missing" ? "✗" : "·";
@@ -215,7 +180,7 @@ function TrackRow({ track, index, status }) {
   );
 }
 
-// ─── Main App ────────────────────────────────────────────────────────────────
+// ─── Main App ─────────────────────────────────────────────────────────────
 export default function App() {
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyUser, setSpotifyUser] = useState(null);
@@ -227,14 +192,21 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const textareaRef = useRef(null);
 
-  // Parse Spotify token from redirect hash
+  // Check for Spotify token in cookies
   useEffect(() => {
-    const token = parseHashToken();
-    if (token) {
-      setSpotifyToken(token);
-      window.history.replaceState({}, "", window.location.pathname);
-      getSpotifyUser(token).then(setSpotifyUser);
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/spotify/me");
+        if (res.ok) {
+          const user = await res.json();
+          setSpotifyUser(user);
+          setSpotifyToken(true); // Token exists, we're authenticated
+        }
+      } catch (err) {
+        console.log("Not authenticated with Spotify");
+      }
     }
+    checkAuth();
   }, []);
 
   async function handleGenerate() {
@@ -252,33 +224,27 @@ export default function App() {
 
       if (spotifyToken) {
         setPhase("adding");
-        const user = spotifyUser || (await getSpotifyUser(spotifyToken));
 
-        const spPlaylist = await createSpotifyPlaylist(
-          spotifyToken,
-          user.id,
-          result.playlistName,
-          result.description
-        );
+        const createRes = await fetch("/api/create-playlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playlistName: result.playlistName,
+            description: result.description,
+            tracks: result.tracks,
+          }),
+        });
 
-        const uris = [];
-        for (let i = 0; i < result.tracks.length; i++) {
-          const t = result.tracks[i];
-          const found = await spotifySearch(spotifyToken, `${t.title} ${t.artist}`);
-          setTrackStatuses((prev) => {
-            const next = [...prev];
-            next[i] = found ? "found" : "missing";
-            return next;
-          });
-          if (found) uris.push(found.uri);
-          await new Promise((r) => setTimeout(r, 100)); // slight delay for visual effect
+        if (!createRes.ok) {
+          const error = await createRes.json();
+          throw new Error(error.error || "Failed to create Spotify playlist");
         }
 
-        if (uris.length > 0) {
-          await addTracksToPlaylist(spotifyToken, spPlaylist.id, uris);
-        }
-
-        setSpotifyPlaylistUrl(spPlaylist.external_urls?.spotify);
+        const playlistData = await createRes.json();
+        setSpotifyPlaylistUrl(playlistData.playlist.url);
+        
+        // Update track statuses based on tracks added
+        setTrackStatuses(result.tracks.map(() => "found"));
         setPhase("done");
       } else {
         setTrackStatuses(result.tracks.map(() => "found"));
@@ -286,7 +252,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Something went wrong. Check your API keys and try again.");
+      setErrorMsg(err.message || "Something went wrong. Check your API keys and try again.");
       setPhase("error");
     }
   }
@@ -328,7 +294,7 @@ export default function App() {
       {/* Noise texture overlay */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' result='noise'/%3E%3CfeColorMatrix in='noise' type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' fill='black' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")`,
         opacity: 0.6,
       }} />
 
@@ -355,7 +321,7 @@ export default function App() {
             {/* Spotify auth button */}
             {!spotifyToken ? (
               <a
-                href={getSpotifyAuthUrl()}
+                href="/api/auth/spotify"
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "8px 16px", borderRadius: 100,
@@ -367,7 +333,7 @@ export default function App() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.15)")}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.36.144-.643.499-.771 3.395-1.081 7.001-.651 10.051.873.359.207.912.159 1.141-.438l.748-1.341zm1.44-3.3c-.301.466-.841.515-1.306.309-3.604-2.214-9.037-2.854-13.321-1.561-.473.134-.906-.172-.994-.646-.09-.474.191-.922.665-1.012 4.818-1.402 10.504-.655 14.523 1.78.561.331 1.007 1.01.703 1.52zm.133-3.467c-4.37-2.596-11.6-2.827-15.775-1.482-.568.16-1.135-.164-1.282-.744-.148-.584.145-1.189.712-1.345 4.871-1.56 12.655-1.285 17.579 1.718.56.33.855 1.026.55 1.531-.305.505-1.08.684-1.634.423z" />
                 </svg>
                 Connect Spotify
               </a>
@@ -457,7 +423,7 @@ export default function App() {
           <div style={{ textAlign: "center", padding: "40px 0", animation: "fadeSlideIn 0.4s ease forwards" }}>
             <div style={{ width: 32, height: 32, border: "2px solid rgba(29,185,84,0.2)", borderTopColor: "#1DB954", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 0.8s linear infinite" }} />
             <p style={{ color: "#666", fontSize: 14, animation: "pulse 2s ease infinite" }}>
-             Curating your playlist with Gemini...
+              Curating your playlist...
             </p>
           </div>
         )}
@@ -558,8 +524,7 @@ export default function App() {
         {/* Setup reminder if Spotify not connected */}
         {!spotifyToken && phase === "idle" && (
           <div style={{ marginTop: 40, padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
-            <strong style={{ color: "#777" }}>Setup note:</strong> Replace <code style={{ background: "rgba(255,255,255,0.08)", padding: "1px 6px", borderRadius: 4, color: "#aaa" }}>YOUR_SPOTIFY_CLIENT_ID</code> at the top of this file with your Spotify app's Client ID. Create one free at{" "}
-            <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer" style={{ color: "#1DB954" }}>developer.spotify.com</a>. Set the Redirect URI to this page's URL.
+            <strong style={{ color: "#777" }}>Quick start:</strong> Click "Connect Spotify" above to link your account and auto-save generated playlists.
           </div>
         )}
       </div>
