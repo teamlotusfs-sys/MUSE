@@ -89,7 +89,10 @@ export default async function handler(req, res) {
           const searchRes = await fetch(
             `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
             {
-              headers: { Authorization: `Bearer ${accessToken}` },
+              headers: { 
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json',
+              },
             }
           );
 
@@ -100,13 +103,13 @@ export default async function handler(req, res) {
             if (track) {
               song.imageUrl = track.album?.images?.[0]?.url || null;
               song.previewUrl = track.preview_url || null;
+              song.spotifyUrl = track.external_urls?.spotify || null;
             }
           }
         }
       }
     } catch (spotifyError) {
       console.error('Error fetching from Spotify:', spotifyError);
-      // Continue without artwork/preview
     }
 
     return res.status(200).json(song);
