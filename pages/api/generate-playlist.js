@@ -74,21 +74,22 @@ export default async function handler(req, res) {
     });
 
     // rest of code...
+const message = await client.chat.completions.create({
+  model: "mixtral-8x7b-32768",
+  max_tokens: 1024,
+  messages: [
+    {
+      role: "system",
+      content: CURATOR_SYSTEM_PROMPT,
+    },
+    {
+      role: "user",
+      content: `Create a 15-track playlist for: ${prompt}`,
+    },
+  ],
+});
 
-    const message = await client.messages.create({
-      model: "mixtral-8x7b-32768",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "system",
-          content: CURATOR_SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: `Create a 15-track playlist for: ${prompt}`,
-        },
-      ],
-    });
+const generatedText = message.choices[0].message.content;
 
     const generatedText = message.content[0].text;
 
