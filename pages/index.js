@@ -8,113 +8,28 @@ function getSpotifyAuthUrl() {
   const params = new URLSearchParams({
     client_id: SPOTIFY_CLIENT_ID,
     response_type: "code",
-   redirect_uri: `${REDIRECT_URI}/api/auth/callback`,
+    redirect_uri: `${REDIRECT_URI}/api/auth/callback`,
     scope: SCOPES,
     show_dialog: "true",
   });
   return `https://accounts.spotify.com/authorize?${params}`;
 }
 
-// ─── Spotify API Helpers ─────────────────────────────────────────────────────
-async function spotifySearch(token, query) {
-  const res = await fetch(
-    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  const data = await res.json();
-  return data.tracks?.items?.[0] || null;
-}
-
-async function getSpotifyUser(token) {
-  const res = await fetch("https://api.spotify.com/v1/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return res.json();
-}
-
-async function createSpotifyPlaylist(token, userId, name, description) {
-  const res = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, public: false }),
-  });
-  return res.json();
-}
-
-async function addTracksToPlaylist(token, playlistId, uris) {
-  await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ uris }),
-  });
-}
-
-const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic knowledge of music across all genres and eras. Your playlists are genuinely great — not generic, not obvious.
-
-MOOD-TO-ARTIST REFERENCE GUIDE:
-
-LATE NIGHT / CITY / NOCTURNAL:
-  Artists: The Weeknd, Frank Ocean, James Blake, Sade, Com Truise, Kavinsky, Floating Points, Massive Attack, Portishead, Banks, How To Dress Well, Rhye, Majid Jordan, dvsn, Kaytranada, Blood Orange
-  Vibe: atmospheric, sensual, slow-burning, urban
-
-MELANCHOLY / HEARTBREAK / INTROSPECTION:
-  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine
-  Vibe: sparse, raw, emotionally heavy, intimate
-
-EUPHORIC / JOYFUL / SUMMER:
-  Artists: Daft Punk, Pharrell Williams, Lizzo, Carly Rae Jepsen, MNEK, Chromeo, Jungle, Parcels, Franc Moody, Surfaces, Still Woozy, Rex Orange County
-  Vibe: bright, danceable, warm, feels-good
-
-FOCUS / STUDY / DEEP WORK:
-  Artists: Brian Eno, Nils Frahm, Max Richter, Ólafur Arnalds, Four Tet, Jon Hopkins, Tycho, Bonobo, Kiasmos, Rival Consoles, Hammock, Hiroshi Yoshimura
-  Vibe: minimal, textural, no lyrics, low distraction
-
-HYPE / ENERGY / WORKOUT:
-  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin
-  Vibe: aggressive, high-tempo, adrenaline
-
-INDIE / ALTERNATIVE / GUITARS:
-  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust
-  Vibe: guitar-forward, indie sensibility, varying energy
-
-CURATION RULES:
-1. Mix 60% well-known tracks with 40% deeper cuts.
-2. Think about arc and flow: beginning, middle, and end.
-3. Never repeat an artist more than twice.
-4. Pick specific, real songs that actually fit the mood.
-5. Return exactly 15 tracks.
-
-Return ONLY valid JSON:
-{
-  "playlistName": "evocative name",
-  "description": "one sentence",
-  "tracks": [
-    { "title": "Song", "artist": "Artist" }
-  ]
-}`;
-
 async function generatePlaylist(prompt) {
-  console.log("Sending prompt to API:", prompt);
   const response = await fetch("/api/generate-playlist", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
   });
 
-  console.log("API response status:", response.status);
-
   if (!response.ok) {
     const error = await response.json();
-    console.error("API error:", error);
     throw new Error(error.error || "Failed to generate playlist");
   }
 
-  const data = await response.json();
-  console.log("Playlist received:", data);
-  return data;
+  return response.json();
 }
 
-// ─── Animated Waveform ──────────────────────────────────────────────────────
 function Waveform({ active }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, height: 20 }}>
@@ -124,7 +39,7 @@ function Waveform({ active }) {
           style={{
             width: 3,
             borderRadius: 2,
-            background: active ? "#1DB954" : "#444",
+            background: active ? "#1DB954" : "#333",
             height: active ? undefined : 6,
             animation: active ? `wave ${0.8 + i * 0.15}s ease-in-out infinite alternate` : "none",
             animationDelay: `${i * 0.1}s`,
@@ -141,7 +56,6 @@ function Waveform({ active }) {
   );
 }
 
-// ─── Track Row ─────────────────────────────────────────────────────────────
 function TrackRow({ track, index, status }) {
   const statusColor = status === "found" ? "#1DB954" : status === "missing" ? "#e74c3c" : "#555";
   const statusIcon = status === "found" ? "✓" : status === "missing" ? "✗" : "·";
@@ -152,26 +66,26 @@ function TrackRow({ track, index, status }) {
         display: "flex",
         alignItems: "center",
         gap: 16,
-        padding: "12px 16px",
-        borderRadius: 8,
+        padding: "14px 16px",
+        borderRadius: 10,
         background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.08)",
         animation: "fadeSlideIn 0.4s ease forwards",
-        animationDelay: `${index * 0.06}s`,
+        animationDelay: `${index * 0.05}s`,
         opacity: 0,
-        transition: "background 0.2s",
+        transition: "all 0.2s",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
     >
-      <span style={{ color: "#444", fontSize: 13, width: 20, textAlign: "right", fontFamily: "monospace" }}>
+      <span style={{ color: "#555", fontSize: 12, width: 20, textAlign: "right", fontFamily: "monospace" }}>
         {index + 1}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: "#fff", fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {track.title}
         </div>
-        <div style={{ color: "#888", fontSize: 12, marginTop: 2 }}>{track.artist}</div>
+        <div style={{ color: "#777", fontSize: 12, marginTop: 2 }}>{track.artist}</div>
       </div>
       <span style={{ color: statusColor, fontSize: 16, fontWeight: 700, width: 20, textAlign: "center" }}>
         {statusIcon}
@@ -180,19 +94,18 @@ function TrackRow({ track, index, status }) {
   );
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────
 export default function App() {
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyUser, setSpotifyUser] = useState(null);
   const [prompt, setPrompt] = useState("");
-  const [phase, setPhase] = useState("idle"); // idle | generating | adding | done | error
+  const [phase, setPhase] = useState("idle");
   const [playlist, setPlaylist] = useState(null);
   const [trackStatuses, setTrackStatuses] = useState([]);
   const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [activeTab, setActiveTab] = useState("create");
   const textareaRef = useRef(null);
 
-  // Check for Spotify token in cookies
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -200,10 +113,10 @@ export default function App() {
         if (res.ok) {
           const user = await res.json();
           setSpotifyUser(user);
-          setSpotifyToken(true); // Token exists, we're authenticated
+          setSpotifyToken(true);
         }
       } catch (err) {
-        console.log("Not authenticated with Spotify");
+        console.log("Not authenticated");
       }
     }
     checkAuth();
@@ -242,8 +155,6 @@ export default function App() {
 
         const playlistData = await createRes.json();
         setSpotifyPlaylistUrl(playlistData.playlist.url);
-        
-        // Update track statuses based on tracks added
         setTrackStatuses(result.tracks.map(() => "found"));
         setPhase("done");
       } else {
@@ -252,17 +163,24 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || "Something went wrong. Check your API keys and try again.");
+      setErrorMsg(err.message || "Something went wrong");
       setPhase("error");
     }
   }
 
   const examplePrompts = [
-    "music for a late night drive through a neon city",
-    "songs that feel like falling in love slowly",
+    "late night city drive with neon lights",
+    "falling in love slowly",
     "2000s indie rock for studying",
-    "dark ambient for a horror game",
-    "upbeat jazz for a sunny Sunday morning",
+    "dark ambient for focused work",
+    "summer morning vibes",
+  ];
+
+  const tabs = [
+    { id: "create", label: "Create Playlist", icon: "✨" },
+    { id: "discover", label: "Discover", icon: "🎵", disabled: true },
+    { id: "history", label: "History", icon: "⏱️", disabled: true },
+    { id: "trending", label: "Trending Now", icon: "🔥", disabled: true },
   ];
 
   return (
@@ -286,271 +204,462 @@ export default function App() {
           to { transform: rotate(360deg); }
         }
         textarea:focus { outline: none; }
-        .generate-btn:hover { background: #1ed760 !important; transform: translateY(-1px); }
-        .generate-btn:active { transform: translateY(0); }
-        .example-chip:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
       `}</style>
 
-      {/* Noise texture overlay */}
+      {/* Ambient background */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' result='noise'/%3E%3CfeColorMatrix in='noise' type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' fill='black' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E")`,
-        opacity: 0.6,
+        background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(29,185,84,0.08) 0%, transparent 50%)",
       }} />
 
-      {/* Ambient glow */}
-      <div style={{
-        position: "fixed", top: -200, left: "50%", transform: "translateX(-50%)",
-        width: 800, height: 400, borderRadius: "50%",
-        background: "radial-gradient(ellipse, rgba(29,185,84,0.08) 0%, transparent 70%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 900, margin: "0 auto", padding: "40px 24px 80px" }}>
+        
+        {/* Header with Auth */}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 48,
+          animation: "fadeSlideIn 0.6s ease forwards",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Waveform active={phase === "generating" || phase === "adding"} />
+            <span style={{ fontFamily: "'Fraunces', serif", fontSize: 28, fontWeight: 700 }}>
+              MUSE
+            </span>
+          </div>
 
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 680, margin: "0 auto", padding: "60px 24px 80px" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: 56, animation: "fadeSlideIn 0.6s ease forwards" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Waveform active={phase === "generating" || phase === "adding"} />
-              <span style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px" }}>
-                tuneforge
-              </span>
-            </div>
-
-            {/* Spotify auth button */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {!spotifyToken ? (
               <a
                 href="/api/auth/spotify"
                 style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 16px", borderRadius: 100,
-                  background: "rgba(29,185,84,0.15)", border: "1px solid rgba(29,185,84,0.3)",
-                  color: "#1DB954", fontSize: 13, fontWeight: 500, textDecoration: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 20px",
+                  borderRadius: 100,
+                  background: "#1DB954",
+                  color: "#000",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
                   transition: "all 0.2s",
+                  cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.25)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.15)")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.36.144-.643.499-.771 3.395-1.081 7.001-.651 10.051.873.359.207.912.159 1.141-.438l.748-1.341zm1.44-3.3c-.301.466-.841.515-1.306.309-3.604-2.214-9.037-2.854-13.321-1.561-.473.134-.906-.172-.994-.646-.09-.474.191-.922.665-1.012 4.818-1.402 10.504-.655 14.523 1.78.561.331 1.007 1.01.703 1.52zm.133-3.467c-4.37-2.596-11.6-2.827-15.775-1.482-.568.16-1.135-.164-1.282-.744-.148-.584.145-1.189.712-1.345 4.871-1.56 12.655-1.285 17.579 1.718.56.33.855 1.026.55 1.531-.305.505-1.08.684-1.634.423z" />
-                </svg>
-                Connect Spotify
+                🎵 Connect Spotify
               </a>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 100, background: "rgba(29,185,84,0.1)", border: "1px solid rgba(29,185,84,0.2)" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
-                <span style={{ color: "#1DB954", fontSize: 13 }}>
-                  {spotifyUser?.display_name || "Connected"}
-                </span>
-              </div>
+              <>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderRadius: 100,
+                  background: "rgba(29,185,84,0.1)",
+                  border: "1px solid rgba(29,185,84,0.3)",
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
+                  <span style={{ color: "#1DB954", fontSize: 12, fontWeight: 500 }}>
+                    {spotifyUser?.display_name || "Connected"}
+                  </span>
+                </div>
+                <button
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    setSpotifyToken(null);
+                    setSpotifyUser(null);
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 100,
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#aaa",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+                    e.currentTarget.style.color = "#fff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                    e.currentTarget.style.color = "#aaa";
+                  }}
+                >
+                  Logout
+                </button>
+              </>
             )}
           </div>
-) : (
-  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 100, background: "rgba(29,185,84,0.1)", border: "1px solid rgba(29,185,84,0.2)" }}>
-      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
-      <span style={{ color: "#1DB954", fontSize: 13 }}>
-        {spotifyUser?.display_name || "Connected"}
-      </span>
-    </div>
-    <button
-      onClick={async () => {
-        await fetch("/api/auth/logout", { method: "POST" });
-        setSpotifyToken(null);
-        setSpotifyUser(null);
-      }}
-      style={{
-        padding: "8px 16px", borderRadius: 100,
-        background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
-        color: "#aaa", fontSize: 13, fontWeight: 500, cursor: "pointer",
-        transition: "all 0.2s",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
-    >
-      Logout
-    </button>
-  </div>
-)}
-          <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 42, fontWeight: 300, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#fff" }}>
-            Describe your<br />
-            <em style={{ fontStyle: "italic", color: "#1DB954" }}>perfect playlist.</em>
-          </h1>
-          <p style={{ color: "#666", fontSize: 15, marginTop: 14, lineHeight: 1.6 }}>
-            Tell us a mood, moment, or memory — we'll build a playlist and{" "}
-            {spotifyToken ? "add it straight to your Spotify." : "connect Spotify to auto-save it."}
-          </p>
         </div>
 
-        {/* Prompt input */}
-        <div style={{ marginBottom: 20, animation: "fadeSlideIn 0.6s ease 0.1s forwards", opacity: 0 }}>
-          <div style={{
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16,
-            background: "rgba(255,255,255,0.04)", overflow: "hidden",
-            transition: "border-color 0.2s",
-          }}
-            onFocusCapture={(e) => (e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)")}
-            onBlurCapture={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-          >
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate(); }}
-              placeholder="e.g. rainy afternoon in a coffee shop, early 2000s nostalgia, pre-game hype, post-breakup catharsis..."
+        {/* Tab Navigation */}
+        <div style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 40,
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          paddingBottom: 16,
+          animation: "fadeSlideIn 0.6s ease 0.1s forwards",
+          opacity: 0,
+        }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => !tab.disabled && setActiveTab(tab.id)}
+              disabled={tab.disabled}
               style={{
-                width: "100%", minHeight: 110, padding: "20px",
-                background: "transparent", border: "none", resize: "none",
-                color: "#fff", fontSize: 16, lineHeight: 1.6, fontFamily: "inherit",
+                padding: "8px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: activeTab === tab.id ? "rgba(29,185,84,0.15)" : "transparent",
+                color: activeTab === tab.id ? "#1DB954" : tab.disabled ? "#555" : "#888",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: tab.disabled ? "not-allowed" : "pointer",
+                transition: "all 0.2s",
+                fontFamily: "inherit",
+                borderBottom: activeTab === tab.id ? "2px solid #1DB954" : "2px solid transparent",
               }}
-            />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              <span style={{ color: "#444", fontSize: 12 }}>⌘↵ to generate</span>
-              <button
-                className="generate-btn"
-                onClick={handleGenerate}
-                disabled={!prompt.trim() || phase === "generating" || phase === "adding"}
-                style={{
-                  padding: "10px 24px", borderRadius: 100, border: "none",
-                  background: "#1DB954", color: "#000", fontFamily: "inherit",
-                  fontSize: 14, fontWeight: 600, cursor: "pointer",
-                  transition: "all 0.2s", opacity: (!prompt.trim() || phase === "generating" || phase === "adding") ? 0.4 : 1,
-                }}
-              >
-                {phase === "generating" ? "Generating..." : phase === "adding" ? "Adding to Spotify..." : "Generate Playlist"}
-              </button>
-            </div>
-          </div>
+              onMouseEnter={(e) => {
+                if (!tab.disabled) {
+                  e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!tab.disabled) {
+                  e.currentTarget.style.color = activeTab === tab.id ? "#1DB954" : "#888";
+                  e.currentTarget.style.background = activeTab === tab.id ? "rgba(29,185,84,0.15)" : "transparent";
+                }
+              }}
+            >
+              <span style={{ marginRight: 6 }}>{tab.icon}</span>
+              {tab.label}
+              {tab.disabled && <span style={{ marginLeft: 4, fontSize: 11 }}>(soon)</span>}
+            </button>
+          ))}
         </div>
 
-        {/* Example chips */}
-        {phase === "idle" && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 40, animation: "fadeSlideIn 0.6s ease 0.2s forwards", opacity: 0 }}>
-            {examplePrompts.map((ex) => (
-              <button
-                key={ex}
-                className="example-chip"
-                onClick={() => setPrompt(ex)}
-                style={{
-                  padding: "6px 14px", borderRadius: 100, border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)", color: "#888", fontSize: 12,
-                  fontFamily: "inherit", cursor: "pointer", transition: "all 0.15s",
-                }}
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Loading state */}
-        {(phase === "generating") && (
-          <div style={{ textAlign: "center", padding: "40px 0", animation: "fadeSlideIn 0.4s ease forwards" }}>
-            <div style={{ width: 32, height: 32, border: "2px solid rgba(29,185,84,0.2)", borderTopColor: "#1DB954", borderRadius: "50%", margin: "0 auto 16px", animation: "spin 0.8s linear infinite" }} />
-            <p style={{ color: "#666", fontSize: 14, animation: "pulse 2s ease infinite" }}>
-              Curating your playlist...
-            </p>
-          </div>
-        )}
-
-        {/* Playlist results */}
-        {playlist && (phase === "adding" || phase === "done") && (
+        {/* Create Playlist Tab */}
+        {activeTab === "create" && (
           <div style={{ animation: "fadeSlideIn 0.5s ease forwards" }}>
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-                <div>
-                  <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px" }}>
-                    {playlist.playlistName}
-                  </h2>
-                  <p style={{ color: "#666", fontSize: 14, marginTop: 4 }}>{playlist.description}</p>
+            <div style={{ marginBottom: 40 }}>
+              <h1 style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: 48,
+                fontWeight: 300,
+                lineHeight: 1.1,
+                letterSpacing: "-1px",
+                marginBottom: 12,
+              }}>
+                Describe your
+                <br />
+                <span style={{ color: "#1DB954", fontStyle: "italic" }}>perfect playlist</span>
+              </h1>
+              <p style={{ color: "#777", fontSize: 15, maxWidth: 500 }}>
+                Tell us a mood, moment, or vibe — our AI will craft a unique playlist just for you{spotifyToken ? " and add it to your Spotify." : "."}
+              </p>
+            </div>
+
+            {/* Input Box */}
+            <div style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 16,
+              background: "rgba(255,255,255,0.03)",
+              overflow: "hidden",
+              transition: "all 0.3s",
+              marginBottom: 24,
+            }}
+              onFocusCapture={(e) => {
+                e.currentTarget.style.borderColor = "rgba(29,185,84,0.4)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+              }}
+              onBlurCapture={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+              }}
+            >
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate();
+                }}
+                placeholder="e.g., late night drive through neon streets, Sunday morning coffee vibes, breakup anthems..."
+                style={{
+                  width: "100%",
+                  minHeight: 120,
+                  padding: "24px",
+                  background: "transparent",
+                  border: "none",
+                  resize: "none",
+                  color: "#fff",
+                  fontSize: 16,
+                  lineHeight: 1.6,
+                  fontFamily: "inherit",
+                }}
+              />
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "16px 24px",
+                borderTop: "1px solid rgba(255,255,255,0.05)",
+                background: "rgba(255,255,255,0.01)",
+              }}>
+                <span style={{ color: "#555", fontSize: 11 }}>⌘↵ or Ctrl↵ to generate</span>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!prompt.trim() || phase === "generating" || phase === "adding"}
+                  style={{
+                    padding: "12px 32px",
+                    borderRadius: 100,
+                    border: "none",
+                    background: "#1DB954",
+                    color: "#000",
+                    fontFamily: "inherit",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    opacity: (!prompt.trim() || phase === "generating" || phase === "adding") ? 0.4 : 1,
+                  }}
+                  onMouseEnter={(e) => !(!prompt.trim() || phase === "generating" || phase === "adding") && (e.currentTarget.style.background = "#1ed760", e.currentTarget.style.transform = "translateY(-2px)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954", e.currentTarget.style.transform = "translateY(0)")}
+                >
+                  {phase === "generating" ? "Generating..." : phase === "adding" ? "Adding..." : "✨ Generate"}
+                </button>
+              </div>
+            </div>
+
+            {/* Example Prompts */}
+            {phase === "idle" && (
+              <div style={{ marginBottom: 40 }}>
+                <p style={{ color: "#666", fontSize: 12, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Try one of these
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                  {examplePrompts.map((ex) => (
+                    <button
+                      key={ex}
+                      onClick={() => setPrompt(ex)}
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "#aaa",
+                        fontSize: 13,
+                        fontFamily: "inherit",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(29,185,84,0.15)";
+                        e.currentTarget.style.color = "#1DB954";
+                        e.currentTarget.style.borderColor = "rgba(29,185,84,0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                        e.currentTarget.style.color = "#aaa";
+                        e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                      }}
+                    >
+                      {ex}
+                    </button>
+                  ))}
                 </div>
-                {phase === "adding" && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#1DB954", fontSize: 13, whiteSpace: "nowrap", paddingTop: 4 }}>
-                    <div style={{ width: 12, height: 12, border: "1.5px solid rgba(29,185,84,0.3)", borderTopColor: "#1DB954", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    Searching Spotify...
+              </div>
+            )}
+
+            {/* Loading State */}
+            {phase === "generating" && (
+              <div style={{ textAlign: "center", padding: "60px 0", animation: "fadeSlideIn 0.4s ease forwards" }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  border: "2px solid rgba(29,185,84,0.2)",
+                  borderTopColor: "#1DB954",
+                  borderRadius: "50%",
+                  margin: "0 auto 24px",
+                  animation: "spin 0.8s linear infinite",
+                }} />
+                <p style={{ color: "#888", fontSize: 15 }}>Curating your perfect playlist...</p>
+              </div>
+            )}
+
+            {/* Playlist Results */}
+            {playlist && (phase === "adding" || phase === "done") && (
+              <div style={{ animation: "fadeSlideIn 0.5s ease forwards" }}>
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
+                    <div>
+                      <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 32, fontWeight: 700, marginBottom: 8 }}>
+                        {playlist.playlistName}
+                      </h2>
+                      <p style={{ color: "#777", fontSize: 14 }}>{playlist.description}</p>
+                    </div>
+                    {phase === "adding" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#1DB954", fontSize: 13, whiteSpace: "nowrap" }}>
+                        <div style={{ width: 12, height: 12, border: "1.5px solid rgba(29,185,84,0.3)", borderTopColor: "#1DB954", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                        Searching Spotify...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {playlist.tracks.map((track, i) => (
+                    <TrackRow key={i} track={track} index={i} status={trackStatuses[i] || "pending"} />
+                  ))}
+                </div>
+
+                {phase === "done" && (
+                  <div style={{
+                    marginTop: 32,
+                    padding: 24,
+                    borderRadius: 12,
+                    background: "rgba(29,185,84,0.08)",
+                    border: "1px solid rgba(29,185,84,0.25)",
+                    animation: "fadeSlideIn 0.5s ease forwards",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                      <div>
+                        <div style={{ color: "#1DB954", fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+                          ✓ {spotifyPlaylistUrl ? "Playlist added to Spotify!" : "Playlist generated!"}
+                        </div>
+                        <div style={{ color: "#777", fontSize: 13 }}>
+                          {trackStatuses.filter((s) => s === "found").length} of {playlist.tracks.length} tracks matched
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        {spotifyPlaylistUrl && (
+                          <a
+                            href={spotifyPlaylistUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "12px 24px",
+                              borderRadius: 100,
+                              background: "#1DB954",
+                              color: "#000",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              textDecoration: "none",
+                              transition: "all 0.2s",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760", e.currentTarget.style.transform = "translateY(-2px)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954", e.currentTarget.style.transform = "translateY(0)")}
+                          >
+                            🎵 Open in Spotify
+                          </a>
+                        )}
+                        <button
+                          onClick={() => {
+                            setPhase("idle");
+                            setPlaylist(null);
+                            setPrompt("");
+                          }}
+                          style={{
+                            padding: "12px 24px",
+                            borderRadius: 100,
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            background: "rgba(255,255,255,0.05)",
+                            color: "#aaa",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            fontFamily: "inherit",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                            e.currentTarget.style.color = "#fff";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                            e.currentTarget.style.color = "#aaa";
+                          }}
+                        >
+                          ✨ Create Another
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {playlist.tracks.map((track, i) => (
-                <TrackRow
-                  key={i}
-                  track={track}
-                  index={i}
-                  status={trackStatuses[i] || "pending"}
-                />
-              ))}
-            </div>
+            {/* Error State */}
+            {phase === "error" && (
+              <div style={{
+                padding: 24,
+                borderRadius: 12,
+                background: "rgba(231,76,60,0.1)",
+                border: "1px solid rgba(231,76,60,0.25)",
+                animation: "fadeSlideIn 0.4s ease forwards",
+              }}>
+                <p style={{ color: "#ff6b6b", fontSize: 14, marginBottom: 12 }}>{errorMsg}</p>
+                <button
+                  onClick={() => setPhase("idle")}
+                  style={{
+                    color: "#ff6b6b",
+                    fontSize: 13,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    textDecoration: "underline",
+                    fontWeight: 500,
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
 
-            {phase === "done" && (
-              <div style={{ marginTop: 28, padding: 20, borderRadius: 12, background: "rgba(29,185,84,0.08)", border: "1px solid rgba(29,185,84,0.2)", animation: "fadeSlideIn 0.5s ease forwards" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                  <div>
-                    <div style={{ color: "#1DB954", fontWeight: 600, fontSize: 14, marginBottom: 2 }}>
-                      {spotifyPlaylistUrl ? "✓ Playlist added to Spotify!" : "✓ Playlist generated!"}
-                    </div>
-                    <div style={{ color: "#666", fontSize: 13 }}>
-                      {trackStatuses.filter((s) => s === "found").length} of {playlist.tracks.length} tracks matched
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    {spotifyPlaylistUrl && (
-                      <a
-                        href={spotifyPlaylistUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: "flex", alignItems: "center", gap: 8,
-                          padding: "10px 20px", borderRadius: 100,
-                          background: "#1DB954", color: "#000",
-                          fontSize: 13, fontWeight: 600, textDecoration: "none",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
-                      >
-                        Open in Spotify →
-                      </a>
-                    )}
-                    <button
-                      onClick={() => { setPhase("idle"); setPlaylist(null); setPrompt(""); }}
-                      style={{
-                        padding: "10px 20px", borderRadius: 100, border: "1px solid rgba(255,255,255,0.15)",
-                        background: "transparent", color: "#aaa", fontSize: 13,
-                        fontFamily: "inherit", cursor: "pointer", transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
-                    >
-                      New Playlist
-                    </button>
-                  </div>
-                </div>
+            {!spotifyToken && phase === "idle" && (
+              <div style={{
+                marginTop: 40,
+                padding: 20,
+                borderRadius: 12,
+                background: "rgba(29,185,84,0.08)",
+                border: "1px solid rgba(29,185,84,0.2)",
+                fontSize: 13,
+                color: "#777",
+              }}>
+                <span style={{ color: "#1DB954", fontWeight: 600 }}>💡 Tip:</span> Connect your Spotify account to automatically save playlists!
               </div>
             )}
           </div>
         )}
 
-        {/* Error */}
-        {phase === "error" && (
-          <div style={{ padding: 20, borderRadius: 12, background: "rgba(231,76,60,0.1)", border: "1px solid rgba(231,76,60,0.2)", animation: "fadeSlideIn 0.4s ease forwards" }}>
-            <p style={{ color: "#e74c3c", fontSize: 14 }}>{errorMsg}</p>
-            <button
-              onClick={() => setPhase("idle")}
-              style={{ marginTop: 12, color: "#888", fontSize: 13, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
-            >
-              Try again
-            </button>
-          </div>
-        )}
-
-        {/* Setup reminder if Spotify not connected */}
-        {!spotifyToken && phase === "idle" && (
-          <div style={{ marginTop: 40, padding: 16, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
-            <strong style={{ color: "#777" }}>Quick start:</strong> Click "Connect Spotify" above to link your account and auto-save generated playlists.
+        {/* Placeholder for other tabs */}
+        {activeTab !== "create" && (
+          <div style={{
+            textAlign: "center",
+            padding: "80px 24px",
+            color: "#666",
+            animation: "fadeSlideIn 0.5s ease forwards",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
+            <p style={{ fontSize: 14 }}>Coming soon! We're building something amazing.</p>
           </div>
         )}
       </div>
