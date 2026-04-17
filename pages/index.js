@@ -28,12 +28,13 @@ async function searchSpotifyForArtwork(artist, title) {
       return {
         imageUrl: data.imageUrl || null,
         previewUrl: data.previewUrl || null,
+        spotifyUrl: data.spotifyUrl || null,
       };
     }
   } catch (err) {
     console.error("Failed to fetch artwork:", err);
   }
-  return { imageUrl: null, previewUrl: null };
+  return { imageUrl: null, previewUrl: null, spotifyUrl: null };
 }
 
 async function getSongOfTheDay() {
@@ -50,14 +51,21 @@ async function getSongOfTheDay() {
 
 function AudioPlayer({ previewUrl, trackTitle }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef(null);
 
   const handlePlayPause = () => {
+    if (!previewUrl) return;
+    
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch(err => {
+          console.error("Error playing audio:", err);
+          setIsPlaying(false);
+        });
       }
       setIsPlaying(!isPlaying);
     }
@@ -68,8 +76,18 @@ function AudioPlayer({ previewUrl, trackTitle }) {
     if (!audio) return;
 
     const handleEnded = () => setIsPlaying(false);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+
     audio.addEventListener("ended", handleEnded);
-    return () => audio.removeEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
   }, []);
 
   if (!previewUrl) {
@@ -93,6 +111,8 @@ function AudioPlayer({ previewUrl, trackTitle }) {
     );
   }
 
+  const progressPercent = duration ? (currentTime / duration) * 100 : 0;
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <button
@@ -111,6 +131,7 @@ function AudioPlayer({ previewUrl, trackTitle }) {
           justifyContent: "center",
           transition: "all 0.2s",
           fontWeight: "bold",
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           if (!isPlaying) {
@@ -127,7 +148,27 @@ function AudioPlayer({ previewUrl, trackTitle }) {
       >
         {isPlaying ? "⏸" : "▶"}
       </button>
-      <audio ref={audioRef} src={previewUrl} />
+      
+      <div style={{ width: 60, height: 4, background: "rgba(0,212,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+        <div 
+          style={{ 
+            height: "100%", 
+            background: "#00d4ff", 
+            width: `${progressPercent}%`,
+            transition: "width 0.1s linear"
+          }} 
+        />
+      </div>
+
+      <audio 
+        ref={audioRef} 
+        src={previewUrl}
+        crossOrigin="anonymous"
+        onError={(e) => {
+          console.error("Audio error:", e);
+          setIsPlaying(false);
+        }}
+      />
     </div>
   );
 }
@@ -231,14 +272,21 @@ function TrackRow({ track, index }) {
 
 function SongOfTheDayCard({ song }) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef(null);
 
   const handlePlayPause = () => {
+    if (!song.previewUrl) return;
+    
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch(err => {
+          console.error("Error playing audio:", err);
+          setIsPlaying(false);
+        });
       }
       setIsPlaying(!isPlaying);
     }
@@ -249,9 +297,21 @@ function SongOfTheDayCard({ song }) {
     if (!audio) return;
 
     const handleEnded = () => setIsPlaying(false);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+
     audio.addEventListener("ended", handleEnded);
-    return () => audio.removeEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
   }, []);
+
+  const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
     <div
@@ -352,33 +412,325 @@ function SongOfTheDayCard({ song }) {
             </p>
           </div>
 
-          <button
-            onClick={handlePlayPause}
+          {song.previewUrl && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <button
+                onClick={handlePlayPause}
+                style={{
+                  padding: "16px 32px",
+                  borderRadius: 12,
+                  background: isPlaying ? "#00d4ff" : "linear-gradient(135deg, #00d4ff, #2563eb)",
+                  border: "none",
+                  color: isPlaying ? "#000" : "#fff",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                  boxShadow: "0 8px 24px rgba(0,212,255,0.25)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,212,255,0.35)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,212,255,0.25)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                {isPlaying ? "⏸ Playing" : "▶ Preview"}
+              </button>
+              
+              <div style={{ width: "100%", height: 4, background: "rgba(0,212,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+                <div 
+                  style={{ 
+                    height: "100%", 
+                    background: "#00d4ff", 
+                    width: `${progressPercent}%`,
+                    transition: "width 0.1s linear"
+                  }} 
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#555" }}>
+                <span>{Math.floor(currentTime)}s</span>
+                <span>{Math.floor(duration)}s</span>
+              </div>
+            </div>
+          )}
+
+          <audio 
+            ref={audioRef} 
+            src={song.previewUrl}
+            crossOrigin="anonymous"
+            onError={(e) => {
+              console.error("Audio error:", e);
+              setIsPlaying(false);
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Epic Generation Screen Component
+function GenerationScreen({ prompt, trackCount }) {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 90) return 90;
+        return prev + Math.random() * 25;
+      });
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const stages = [
+    { label: "Analyzing mood...", icon: "🎯", delay: 0 },
+    { label: "Searching 1M+ tracks...", icon: "🔍", delay: 2 },
+    { label: "Curating perfect flow...", icon: "✨", delay: 4 },
+    { label: "Fetching album art...", icon: "🎨", delay: 6 },
+    { label: "Getting previews ready...", icon: "🎵", delay: 8 },
+  ];
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#0a0e27",
+        fontFamily: "'DM Sans', sans-serif",
+        color: "#fff",
+        overflow: "hidden",
+      }}
+    >
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap');
+        
+        @keyframes fadeIn { 
+          from { opacity: 0; } 
+          to { opacity: 1; } 
+        }
+        
+        @keyframes slideUp { 
+          from { transform: translateY(20px); opacity: 0; } 
+          to { transform: translateY(0); opacity: 1; } 
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(0,212,255,0.4), inset 0 0 20px rgba(0,212,255,0.1); }
+          50% { box-shadow: 0 0 40px rgba(0,212,255,0.6), inset 0 0 30px rgba(0,212,255,0.2); }
+        }
+        
+        @keyframes stage-pop {
+          0% { opacity: 0; scale: 0.8; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; scale: 1; }
+        }
+      `}</style>
+
+      {/* Animated Background */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,212,255,0.15) 0%, transparent 50%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "20%",
+            right: "-200px",
+            width: "400px",
+            height: "400px",
+            background: "radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 70%)",
+            borderRadius: "50%",
+            filter: "blur(40px)",
+            animation: "float 6s ease-in-out infinite",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-200px",
+            left: "-200px",
+            width: "400px",
+            height: "400px",
+            background: "radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%)",
+            borderRadius: "50%",
+            filter: "blur(40px)",
+            animation: "float 8s ease-in-out infinite reverse",
+          }}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          padding: "40px 24px",
+          textAlign: "center",
+        }}
+      >
+        {/* Central Glow Circle */}
+        <div
+          style={{
+            width: 200,
+            height: 200,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(0,212,255,0.3), rgba(0,212,255,0.05))",
+            marginBottom: 40,
+            animation: "pulse-glow 3s ease-in-out infinite",
+            border: "2px solid rgba(0,212,255,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 80,
+          }}
+        >
+          ✨
+        </div>
+
+        {/* Main Title */}
+        <h1
+          style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 48,
+            fontWeight: 300,
+            marginBottom: 16,
+            animation: "slideUp 0.6s ease 0.1s forwards",
+            opacity: 0,
+            letterSpacing: "-1px",
+            color: "#fff",
+          }}
+        >
+          Crafting your vibe...
+        </h1>
+
+        {/* Subtitle */}
+        <p
+          style={{
+            color: "#00d4ff",
+            fontSize: 16,
+            maxWidth: 500,
+            marginBottom: 40,
+            animation: "slideUp 0.6s ease 0.2s forwards",
+            opacity: 0,
+            lineHeight: 1.6,
+          }}
+        >
+          "{prompt.substring(0, 50)}{prompt.length > 50 ? "..." : ""}"
+        </p>
+
+        {/* Progress Bar */}
+        <div style={{ width: "100%", maxWidth: 400, marginBottom: 40 }}>
+          <div
             style={{
-              padding: "16px 32px",
-              borderRadius: 12,
-              background: isPlaying ? "#00d4ff" : "linear-gradient(135deg, #00d4ff, #2563eb)",
-              border: "none",
-              color: isPlaying ? "#000" : "#fff",
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: "pointer",
-              transition: "all 0.3s",
-              boxShadow: "0 8px 24px rgba(0,212,255,0.25)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,212,255,0.35)";
-              e.currentTarget.style.transform = "translateY(-2px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,212,255,0.25)";
-              e.currentTarget.style.transform = "translateY(0)";
+              height: 2,
+              background: "rgba(0,212,255,0.2)",
+              borderRadius: 1,
+              overflow: "hidden",
+              marginBottom: 12,
             }}
           >
-            {isPlaying ? "⏸ Playing" : "▶ Preview"}
-          </button>
+            <div
+              style={{
+                height: "100%",
+                background: "linear-gradient(90deg, #00d4ff, #2563eb)",
+                width: `${progress}%`,
+                transition: "width 0.3s ease",
+                boxShadow: "0 0 20px rgba(0,212,255,0.5)",
+              }}
+            />
+          </div>
+          <p style={{ color: "#666", fontSize: 12 }}>{Math.floor(progress)}%</p>
+        </div>
 
-          <audio ref={audioRef} src={song.previewUrl} />
+        {/* Stage Indicators */}
+        <div style={{ animation: "slideUp 0.6s ease 0.3s forwards", opacity: 0 }}>
+          {stages.map((stage, i) => {
+            const isActive = progress > stage.delay * 11;
+            return (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 12,
+                  opacity: isActive ? 1 : 0.3,
+                  transition: "all 0.3s ease",
+                  transform: isActive ? "translateX(0)" : "translateX(-10px)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 20,
+                    animation: isActive ? "stage-pop 0.6s ease" : "none",
+                  }}
+                >
+                  {stage.icon}
+                </span>
+                <span
+                  style={{
+                    color: isActive ? "#00d4ff" : "#555",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    transition: "color 0.3s ease",
+                  }}
+                >
+                  {stage.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Floating Notes */}
+        <div
+          style={{
+            marginTop: 60,
+            display: "flex",
+            gap: 40,
+            animation: "slideUp 0.6s ease 0.4s forwards",
+            opacity: 0,
+          }}
+        >
+          {["🎵", "🎶", "🎼"].map((note, i) => (
+            <div
+              key={i}
+              style={{
+                fontSize: 28,
+                opacity: 0.3,
+                animation: `float ${2 + i * 0.5}s ease-in-out infinite`,
+              }}
+            >
+              {note}
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -392,7 +744,6 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loadingArtwork, setLoadingArtwork] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showThinkingScreen, setShowThinkingScreen] = useState(false);
   const [trackCount, setTrackCount] = useState(15);
   const [activeTab, setActiveTab] = useState("generator");
   const [songOfTheDay, setSongOfTheDay] = useState(null);
@@ -428,35 +779,19 @@ export default function App() {
   async function handleGenerate() {
     if (!prompt.trim()) return;
 
-    setPhase("thinking");
-    setShowThinkingScreen(true);
-    setPlaylist(null);
-    setErrorMsg("");
-
-    const thinkingTimer = setTimeout(() => {
-      setPhase("generating");
-      setShowThinkingScreen(false);
-    }, 2000);
+    setPhase("generating");
 
     try {
       const result = await generatePlaylist(prompt, trackCount);
-      clearTimeout(thinkingTimer);
-
-      if (phase === "thinking") {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-
-      setPhase("generating");
-      setShowThinkingScreen(false);
 
       setLoadingArtwork(true);
       const tracksWithArtwork = await Promise.all(
         result.tracks.map(async (track) => {
-          const { imageUrl, previewUrl } = await searchSpotifyForArtwork(
+          const { imageUrl, previewUrl, spotifyUrl } = await searchSpotifyForArtwork(
             track.artist,
             track.title
           );
-          return { ...track, imageUrl, previewUrl };
+          return { ...track, imageUrl, previewUrl, spotifyUrl };
         })
       );
       setLoadingArtwork(false);
@@ -466,10 +801,8 @@ export default function App() {
       setPhase("done");
     } catch (err) {
       console.error(err);
-      clearTimeout(thinkingTimer);
       setErrorMsg(err.message || "Something went wrong");
       setPhase("error");
-      setShowThinkingScreen(false);
     }
   }
 
@@ -500,138 +833,9 @@ export default function App() {
     "summer morning vibes",
   ];
 
-  // Thinking Screen
-  if (showThinkingScreen && phase === "thinking") {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#0a0e27",
-          fontFamily: "'DM Sans', sans-serif",
-          color: "#fff",
-          overflow: "hidden",
-        }}
-      >
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap');
-          @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-          @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-          @keyframes dot { 0%, 20% { opacity: 0.4; } 50% { opacity: 1; } 80%, 100% { opacity: 0.4; } }
-        `}</style>
-
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            pointerEvents: "none",
-            zIndex: 0,
-            background:
-              "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,212,255,0.12) 0%, transparent 50%)",
-          }}
-        />
-
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            padding: isMobile ? 24 : 40,
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontSize: isMobile ? 80 : 120,
-              marginBottom: 32,
-              animation: "slideUp 0.6s ease forwards",
-            }}
-          >
-            ✨
-          </div>
-
-          <h1
-            style={{
-              fontFamily: "'Fraunces', serif",
-              fontSize: isMobile ? 32 : 48,
-              fontWeight: 300,
-              marginBottom: 16,
-              animation: "slideUp 0.6s ease 0.1s forwards",
-              opacity: 0,
-              letterSpacing: "-1px",
-              color: "#fff",
-            }}
-          >
-            Crafting your vibe...
-          </h1>
-
-          <p
-            style={{
-              color: "#00d4ff",
-              fontSize: isMobile ? 14 : 16,
-              maxWidth: 400,
-              marginBottom: 40,
-              animation: "slideUp 0.6s ease 0.2s forwards",
-              opacity: 0,
-              lineHeight: 1.6,
-            }}
-          >
-            Our AI is exploring thousands of tracks to find the perfect ones for your mood.
-          </p>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              animation: "slideUp 0.6s ease 0.3s forwards",
-              opacity: 0,
-            }}
-          >
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  background: "#00d4ff",
-                  animation: `dot 1.4s ease-in-out infinite`,
-                  animationDelay: `${i * 0.2}s`,
-                }}
-              />
-            ))}
-          </div>
-
-          <div
-            style={{
-              marginTop: 60,
-              display: "flex",
-              gap: 40,
-              animation: "slideUp 0.6s ease 0.4s forwards",
-              opacity: 0,
-            }}
-          >
-            {["🎵", "🎶", "🎼"].map((note, i) => (
-              <div
-                key={i}
-                style={{
-                  fontSize: 28,
-                  opacity: 0.4,
-                  animation: `pulse 2s ease-in-out infinite`,
-                  animationDelay: `${i * 0.3}s`,
-                }}
-              >
-                {note}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  // Epic Generation Screen
+  if (phase === "generating") {
+    return <GenerationScreen prompt={prompt} trackCount={trackCount} />;
   }
 
   // Playlist View
@@ -1207,7 +1411,7 @@ export default function App() {
                     }
                   }}
                 >
-                  {phase === "thinking" || phase === "generating" ? "Generating..." : "✨ Forge"}
+                  {phase === "generating" ? "Generating..." : "✨ Forge"}
                 </button>
               </div>
             </div>
@@ -1307,3 +1511,4 @@ export default function App() {
     </div>
   );
 }
+              
