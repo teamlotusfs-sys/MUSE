@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
   try {
     const client = new OpenAI({
-      apiKey: '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',
+      apiKey: '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',
       baseURL: "https://api.groq.com/openai/v1",
     });
 
