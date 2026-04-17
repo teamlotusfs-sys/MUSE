@@ -10,26 +10,44 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = process.env.SPOTIFY_API_TOKEN;
-    if (!token) {
-      console.warn('SPOTIFY_API_TOKEN not set, returning null');
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
       return res.status(200).json({ imageUrl: null });
     }
 
+    // Get access token
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    if (!tokenRes.ok) {
+      return res.status(200).json({ imageUrl: null });
+    }
+
+    const tokenData = await tokenRes.json();
+    const accessToken = tokenData.access_token;
+
+    // Search for track
     const searchQuery = encodeURIComponent(`${title} ${artist}`);
-    const response = await fetch(
+    const searchRes = await fetch(
       `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 
-    if (!response.ok) {
-      console.warn(`Spotify search failed: ${response.status}`);
+    if (!searchRes.ok) {
       return res.status(200).json({ imageUrl: null });
     }
 
-    const data = await response.json();
+    const data = await searchRes.json();
     const track = data.tracks?.items?.[0];
     const imageUrl = track?.album?.images?.[0]?.url || null;
 
