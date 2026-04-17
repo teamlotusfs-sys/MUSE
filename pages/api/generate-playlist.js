@@ -68,12 +68,13 @@ export default async function handler(req, res) {
     });
   }
 
-  try {
-    const client = new OpenAI({
-      apiKey: apiKey,
-      baseURL: "https://api.groq.com/openai/v1",
-    });
-
+try {
+  const client = new OpenAI({
+    apiKey: apiKey,
+    baseURL: "https://api.groq.com/openai/v1",
+    dangerouslyAllowBrowser: false,
+  });
+  
     const message = await client.chat.completions.create({
       model: "llama-3.1-8b-instant",
       max_tokens: 1024,
