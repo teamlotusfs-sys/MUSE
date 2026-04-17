@@ -77,7 +77,7 @@ export default async function handler(req, res) {
 
   const { prompt } = req.body;
   
-  const apiKey = process.env.HF_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_HF_API_KEY || process.env.HF_API_KEY;
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Hugging Face API key is not configured' });
