@@ -268,35 +268,45 @@ export default function App() {
                     {spotifyUser?.display_name || "Connected"}
                   </span>
                 </div>
-                <button
-                  onClick={async () => {
-                    await fetch("/api/auth/logout", { method: "POST" });
-                    setSpotifyToken(null);
-                    setSpotifyUser(null);
-                  }}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: 100,
-                    background: "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    color: "#aaa",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
-                    e.currentTarget.style.color = "#fff";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                    e.currentTarget.style.color = "#aaa";
-                  }}
-                >
-                  Logout
-                </button>
+               <button
+  onClick={async () => {
+    // Clear localStorage and sessionStorage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear the cookie
+    await fetch("/api/auth/logout", { method: "POST" });
+    
+    // Reset state
+    setSpotifyToken(null);
+    setSpotifyUser(null);
+    
+    // Redirect to home
+    window.location.href = '/';
+  }}
+  style={{
+    padding: "8px 14px",
+    borderRadius: 100,
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "#aaa",
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.2s",
+    fontFamily: "inherit",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+    e.currentTarget.style.color = "#fff";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+    e.currentTarget.style.color = "#aaa";
+  }}
+>
+  Logout
+</button>
               </>
             )}
           </div>
