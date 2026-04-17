@@ -8,7 +8,7 @@ function getSpotifyAuthUrl() {
   const params = new URLSearchParams({
     client_id: SPOTIFY_CLIENT_ID,
     response_type: "code",
-    redirect_uri: `${REDIRECT_URI}/api/auth/spotify/callback`,
+   redirect_uri: `${REDIRECT_URI}/api/auth/callback`,
     scope: SCOPES,
     show_dialog: "true",
   });
