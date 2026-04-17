@@ -56,42 +56,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
-   try {
-    console.log('DEBUG: GROQ_API_KEY exists?', !!process.env.GROQ_API_KEY);
-    console.log('DEBUG: OPENAI_API_KEY exists?', !!process.env.OPENAI_API_KEY);
-    console.log('DEBUG: All env keys:', Object.keys(process.env).filter(k => k.includes('KEY') || k.includes('API')));
-    
-   const apiKey = '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';
-    console.log('DEBUG: Final apiKey?', !!apiKey);
-    
-    if (!apiKey) {
-      throw new Error('No API key found in environment variables');
-    }
-
+  try {
     const client = new OpenAI({
-      apiKey: apiKey,
+      apiKey: 'gsk_YOUR_ACTUAL_KEY_HERE',
       baseURL: "https://api.groq.com/openai/v1",
     });
 
-    // rest of code...
-const message = await client.chat.completions.create({
-  model: "mixtral-8x7b-32768",
-  max_tokens: 1024,
-  messages: [
-    {
-      role: "system",
-      content: CURATOR_SYSTEM_PROMPT,
-    },
-    {
-      role: "user",
-      content: `Create a 15-track playlist for: ${prompt}`,
-    },
-  ],
-});
+    const message = await client.chat.completions.create({
+      model: "mixtral-8x7b-32768",
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "system",
+          content: CURATOR_SYSTEM_PROMPT,
+        },
+        {
+          role: "user",
+          content: `Create a 15-track playlist for: ${prompt}`,
+        },
+      ],
+    });
 
-const generatedText = message.choices[0].message.content;
-
-    const generatedText = message.content[0].text;
+    const generatedText = message.choices[0].message.content;
 
     if (!generatedText) {
       return res.status(500).json({ error: 'No response from AI' });
