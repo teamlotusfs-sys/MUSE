@@ -1,7 +1,15 @@
 import { serialize } from 'cookie';
 
 export default async function handler(req, res) {
-  const { code } = req.query;
+  const { code, error } = req.query;
+
+  console.log('Callback hit!');
+  console.log('Code:', code);
+  console.log('Error:', error);
+
+  if (error) {
+    return res.status(400).json({ error });
+  }
 
   if (!code) {
     return res.status(400).json({ error: 'No code provided' });
@@ -23,12 +31,12 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log('Token response:', data);
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.error_description });
     }
 
-    // Set cookie with access token
     const cookie = serialize('spotify_token', data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
