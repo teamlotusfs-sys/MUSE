@@ -126,7 +126,7 @@ function TrackRow({ track, index }) {
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [authPhase, setAuthPhase] = useState("login"); // login, register, authenticated
+  const [authPhase, setAuthPhase] = useState("initial");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -201,7 +201,7 @@ export default function App() {
     localStorage.removeItem("tuneforge_user");
     localStorage.removeItem("tuneforge_playlists");
     setUser(null);
-    setAuthPhase("login");
+    setAuthPhase("initial");
     setSavedPlaylists([]);
   }
 
@@ -236,7 +236,10 @@ export default function App() {
   }
 
   function savePlaylist() {
-    if (!playlist) return;
+    if (!playlist || !user) {
+      setErrorMsg("Please login to save playlists");
+      return;
+    }
 
     const saved = {
       id: Date.now(),
@@ -304,81 +307,198 @@ export default function App() {
             <p style={{ color: "#777", fontSize: 14 }}>AI-powered playlist generator</p>
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-            <button
-              onClick={() => setAuthPhase("login")}
-              style={{
-                flex: 1,
-                padding: "12px",
-                borderRadius: 8,
-                border: "none",
-                background: authPhase === "login" ? "#1DB954" : "rgba(255,255,255,0.1)",
-                color: authPhase === "login" ? "#000" : "#fff",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                fontFamily: "inherit",
-              }}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setAuthPhase("register")}
-              style={{
-                flex: 1,
-                padding: "12px",
-                borderRadius: 8,
-                border: "none",
-                background: authPhase === "register" ? "#1DB954" : "rgba(255,255,255,0.1)",
-                color: authPhase === "register" ? "#000" : "#fff",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                fontFamily: "inherit",
-              }}
-            >
-              Register
-            </button>
-          </div>
+          {authPhase === "login" || authPhase === "register" ? (
+            <>
+              <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+                <button
+                  onClick={() => setAuthPhase("login")}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: authPhase === "login" ? "#1DB954" : "rgba(255,255,255,0.1)",
+                    color: authPhase === "login" ? "#000" : "#fff",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => setAuthPhase("register")}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: authPhase === "register" ? "#1DB954" : "rgba(255,255,255,0.1)",
+                    color: authPhase === "register" ? "#000" : "#fff",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Register
+                </button>
+              </div>
 
-          {authPhase === "login" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <input
-                type="email"
-                placeholder="Email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                }}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                }}
-              />
+              {authPhase === "login" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 14,
+                    }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 14,
+                    }}
+                  />
+                  <button
+                    onClick={handleLogin}
+                    style={{
+                      padding: "12px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#1DB954",
+                      color: "#000",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                      marginTop: 8,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
+                  >
+                    Login
+                  </button>
+                </div>
+              )}
+
+              {authPhase === "register" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 14,
+                    }}
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 14,
+                    }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      fontSize: 14,
+                    }}
+                  />
+                  <button
+                    onClick={handleRegister}
+                    style={{
+                      padding: "12px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#1DB954",
+                      color: "#000",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                      marginTop: 8,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
+                  >
+                    Create Account
+                  </button>
+                </div>
+              )}
+
               <button
-                onClick={handleLogin}
+                onClick={() => setAuthPhase("initial")}
                 style={{
+                  marginTop: 16,
                   padding: "12px",
                   borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "#aaa",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#aaa")}
+              >
+                ← Back
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setAuthPhase("login")}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: 100,
                   border: "none",
                   background: "#1DB954",
                   color: "#000",
@@ -386,84 +506,58 @@ export default function App() {
                   cursor: "pointer",
                   transition: "all 0.2s",
                   fontFamily: "inherit",
-                  marginTop: 8,
+                  marginBottom: 12,
+                  fontSize: 14,
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
               >
-                Login
+                🎵 Login to Your Account
               </button>
-            </div>
-          )}
 
-          {authPhase === "register" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={registerName}
-                onChange={(e) => setRegisterName(e.target.value)}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                }}
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={registerEmail}
-                onChange={(e) => setRegisterEmail(e.target.value)}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                }}
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={registerPassword}
-                onChange={(e) => setRegisterPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRegister()}
-                style={{
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                }}
-              />
               <button
-                onClick={handleRegister}
+                onClick={() => setAuthPhase("register")}
                 style={{
-                  padding: "12px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#1DB954",
-                  color: "#000",
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: 100,
+                  border: "1px solid rgba(29,185,84,0.4)",
+                  background: "rgba(29,185,84,0.1)",
+                  color: "#1DB954",
                   fontWeight: 600,
                   cursor: "pointer",
                   transition: "all 0.2s",
                   fontFamily: "inherit",
-                  marginTop: 8,
+                  marginBottom: 12,
+                  fontSize: 14,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#1ed760")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#1DB954")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.2)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.1)")}
               >
-                Create Account
+                📝 Create New Account
               </button>
-            </div>
+
+              <button
+                onClick={() => setAuthPhase("guest")}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: 100,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background: "transparent",
+                  color: "#aaa",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontFamily: "inherit",
+                  fontSize: 14,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)", e.currentTarget.style.color = "#fff")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent", e.currentTarget.style.color = "#aaa")}
+              >
+                → Continue as Guest
+              </button>
+            </>
           )}
 
           {errorMsg && (
@@ -518,45 +612,70 @@ export default function App() {
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 14px",
-              borderRadius: 100,
-              background: "rgba(29,185,84,0.1)",
-              border: "1px solid rgba(29,185,84,0.3)",
-            }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
-              <span style={{ color: "#1DB954", fontSize: 12, fontWeight: 500 }}>
-                {user.name}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 100,
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "#aaa",
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                fontFamily: "inherit",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.12)";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                e.currentTarget.style.color = "#aaa";
-              }}
-            >
-              Logout
-            </button>
+            {user && (
+              <>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderRadius: 100,
+                  background: "rgba(29,185,84,0.1)",
+                  border: "1px solid rgba(29,185,84,0.3)",
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1DB954" }} />
+                  <span style={{ color: "#1DB954", fontSize: 12, fontWeight: 500 }}>
+                    {user.name}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 100,
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "#aaa",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+                    e.currentTarget.style.color = "#fff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                    e.currentTarget.style.color = "#aaa";
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            )}
+            {authPhase === "guest" && (
+              <button
+                onClick={() => setAuthPhase("initial")}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 100,
+                  background: "rgba(29,185,84,0.1)",
+                  border: "1px solid rgba(29,185,84,0.3)",
+                  color: "#1DB954",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.2)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.1)")}
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
 
@@ -793,28 +912,30 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 12 }}>
-                      <button
-                        onClick={savePlaylist}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "12px 24px",
-                          borderRadius: 100,
-                          background: "rgba(29,185,84,0.2)",
-                          border: "1px solid rgba(29,185,84,0.4)",
-                          color: "#1DB954",
-                          fontSize: 13,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          fontFamily: "inherit",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.3)")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.2)")}
-                      >
-                        💾 Save to Library
-                      </button>
+                      {user && (
+                        <button
+                          onClick={savePlaylist}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "12px 24px",
+                            borderRadius: 100,
+                            background: "rgba(29,185,84,0.2)",
+                            border: "1px solid rgba(29,185,84,0.4)",
+                            color: "#1DB954",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                            fontFamily: "inherit",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.3)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(29,185,84,0.2)")}
+                        >
+                          💾 Save to Library
+                        </button>
+                      )}
                       <button
                         onClick={downloadCSV}
                         style={{
@@ -903,7 +1024,7 @@ export default function App() {
         )}
 
         {/* History Tab */}
-        {activeTab === "history" && (
+        {activeTab === "history" && user && (
           <div style={{ animation: "fadeSlideIn 0.5s ease forwards" }}>
             <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 32, fontWeight: 700, marginBottom: 24 }}>
               Your Library
@@ -972,6 +1093,18 @@ export default function App() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "history" && !user && (
+          <div style={{
+            textAlign: "center",
+            padding: "80px 24px",
+            color: "#666",
+            animation: "fadeSlideIn 0.5s ease forwards",
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+            <p style={{ fontSize: 14 }}>Login to view your saved playlists</p>
           </div>
         )}
 
