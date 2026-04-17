@@ -34,10 +34,10 @@ export default async function handler(req, res) {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
-    // Search for track
-    const searchQuery = encodeURIComponent(`${title} ${artist}`);
-    const searchRes = await fetch(
-      `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
+    // Try exact search first (artist + track name)
+    let searchQuery = encodeURIComponent(`track:"${title}" artist:"${artist}"`);
+    let searchRes = await fetch(
+      `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=5`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
@@ -47,8 +47,26 @@ export default async function handler(req, res) {
       return res.status(200).json({ imageUrl: null });
     }
 
-    const data = await searchRes.json();
-    const track = data.tracks?.items?.[0];
+    let data = await searchRes.json();
+    let track = data.tracks?.items?.[0];
+
+    // If no exact match, try looser search with just track name
+    if (!track) {
+      searchQuery = encodeURIComponent(`${title}`);
+      searchRes = await fetch(
+        `https://api.spotify.com/v1/search?q=${searchQuery}&type=track&limit=1`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (searchRes.ok) {
+        data = await searchRes.json();
+        track = data.tracks?.items?.[0];
+      }
+    }
+
+    // Get the largest album image available
     const imageUrl = track?.album?.images?.[0]?.url || null;
 
     return res.status(200).json({ imageUrl });
