@@ -25,29 +25,30 @@ export default async function handler(req, res) {
 
     const user = await userRes.json();
 
-    // Create playlist
-    const playlistRes = await fetch(
-      `https://api.spotify.com/v1/users/${user.id}/playlists`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${spotifyToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: playlistName,
-          description,
-          public: false,
-        }),
-      }
-    );
+  const playlistRes = await fetch(
+  `https://api.spotify.com/v1/users/${user.id}/playlists`,
+  {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${spotifyToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: playlistName,
+      description,
+      public: false,
+    }),
+  }
+);
 
-    const playlist = await playlistRes.json();
+const playlist = await playlistRes.json();
 
-    if (!playlistRes.ok) {
-      return res.status(playlistRes.status).json({ error: playlist.error });
-    }
+console.log('Playlist response status:', playlistRes.status);
+console.log('Playlist response:', playlist); // <-- ADD THIS
 
+if (!playlistRes.ok) {
+  return res.status(playlistRes.status).json({ error: playlist.error });
+}
     // Search and add tracks
     const trackUris = [];
 
