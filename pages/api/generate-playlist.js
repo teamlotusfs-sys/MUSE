@@ -5,27 +5,27 @@ const CURATOR_SYSTEM_PROMPT = `You are an elite music curator with encyclopedic 
 MOOD-TO-ARTIST REFERENCE GUIDE:
 
 LATE NIGHT / CITY / NOCTURNAL:
-  Artists: The Weeknd, Frank Ocean, James Blake, Sade, Com Truise, Kavinsky, Floating Points, Massive Attack, Portishead, Banks, How To Dress Well, Rhye, Majid Jordan, dvsn, Kaytranada, Blood Orange
+  Artists: The Weeknd, Frank Ocean, James Blake, Sade, Com Truise, Kavinsky, Floating Points, Massive Attack, Portishead, Banks, How To Dress Well, Rhye, Majid Jordan, dvsn, Kaytranada, Blood Orange, Jon Hopkins, Ólafur Arnalds
   Vibe: atmospheric, sensual, slow-burning, urban
 
 MELANCHOLY / HEARTBREAK / INTROSPECTION:
-  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine
+  Artists: Bon Iver, Phoebe Bridgers, Nick Drake, Elliott Smith, Sufjan Stevens, Julien Baker, Sharon Van Etten, Grouper, Alex G, Hand Habits, Japanese Breakfast, Bedouine, Soccer Mommy, Big Red Machine
   Vibe: sparse, raw, emotionally heavy, intimate
 
 EUPHORIC / JOYFUL / SUMMER:
-  Artists: Daft Punk, Pharrell Williams, Lizzo, Carly Rae Jepsen, MNEK, Chromeo, Jungle, Parcels, Franc Moody, Surfaces, Still Woozy, Rex Orange County
+  Artists: Daft Punk, Pharrell Williams, Lizzo, Carly Rae Jepsen, MNEK, Chromeo, Jungle, Parcels, Franc Moody, Surfaces, Still Woozy, Rex Orange County, Thundercat, Anderson .Paak
   Vibe: bright, danceable, warm, feels-good
 
 FOCUS / STUDY / DEEP WORK:
-  Artists: Brian Eno, Nils Frahm, Max Richter, Ólafur Arnalds, Four Tet, Jon Hopkins, Tycho, Bonobo, Kiasmos, Rival Consoles, Hammock, Hiroshi Yoshimura
+  Artists: Brian Eno, Nils Frahm, Max Richter, Ólafur Arnalds, Four Tet, Jon Hopkins, Tycho, Bonobo, Kiasmos, Rival Consoles, Hammock, Hiroshi Yoshimura, Floating Points, Boards of Canada
   Vibe: minimal, textural, no lyrics, low distraction
 
 HYPE / ENERGY / WORKOUT:
-  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin
+  Artists: Travis Scott, Kendrick Lamar, Playboi Carti, Bicep, Disclosure, Fred again.., Skrillex, Jamie xx, Justice, Gesaffelstein, Aphex Twin, SOPHIE, Grimes, Arca
   Vibe: aggressive, high-tempo, adrenaline
 
 INDIE / ALTERNATIVE / GUITARS:
-  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust
+  Artists: Arctic Monkeys, Tame Impala, Radiohead, Beach House, Vampire Weekend, LCD Soundsystem, Alvvays, Soccer Mommy, Snail Mail, Men I Trust, Metric, IDLES, Pinegrove
   Vibe: guitar-forward, indie sensibility, varying energy
 
 CURATION RULES:
@@ -33,7 +33,7 @@ CURATION RULES:
 2. Think about arc and flow: beginning, middle, and end.
 3. Never repeat an artist more than twice.
 4. Pick specific, real songs that actually fit the mood.
-5. Return exactly 15 tracks.
+5. Return EXACTLY the number of tracks requested (between 5 and 50).
 
 Return ONLY valid JSON:
 {
@@ -50,17 +50,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt } = req.body;
+  const { prompt, trackCount = 15 } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ error: 'Prompt required' });
   }
 
-  // DEBUG: Check if env vars exist
+  // Validate track count
+  const count = Math.max(5, Math.min(50, parseInt(trackCount) || 15));
+
   const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
-  console.log('API Key exists:', !!apiKey);
-  console.log('GROQ_API_KEY:', !!process.env.GROQ_API_KEY);
-  console.log('OPENAI_API_KEY:', !!process.env.OPENAI_API_KEY);
 
   if (!apiKey) {
     return res.status(500).json({ 
@@ -68,16 +67,16 @@ export default async function handler(req, res) {
     });
   }
 
-try {
-  const client = new OpenAI({
-    apiKey: apiKey,
-    baseURL: "https://api.groq.com/openai/v1",
-    dangerouslyAllowBrowser: false,
-  });
-  
+  try {
+    const client = new OpenAI({
+      apiKey: apiKey,
+      baseURL: "https://api.groq.com/openai/v1",
+      dangerouslyAllowBrowser: false,
+    });
+    
     const message = await client.chat.completions.create({
       model: "llama-3.1-8b-instant",
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: "system",
@@ -85,7 +84,7 @@ try {
         },
         {
           role: "user",
-          content: `Create a 15-track playlist for: ${prompt}`,
+          content: `Create a ${count}-track playlist for: ${prompt}`,
         },
       ],
     });
