@@ -57,10 +57,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = new OpenAI({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: "https://api.groq.com/openai/v1",
-    });
+  const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
     const message = await client.messages.create({
       model: "mixtral-8x7b-32768",
