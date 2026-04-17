@@ -1,13 +1,11 @@
-import { parseCookies } from 'nookies';
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const cookies = parseCookies({ req });
-  const spotifyToken = cookies.spotify_token;
+  const cookies = req.headers.cookie || '';
+  const spotifyToken = cookies.split('; ').find(row => row.startsWith('spotify_token='))?.split('=')[1];
 
   if (!spotifyToken) {
     return res.status(401).json({ error: 'Not authenticated with Spotify' });
