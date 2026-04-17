@@ -196,7 +196,7 @@ export default function App() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch("/api/auth/spotify/me");
+        const res = await fetch("/api/auth/me");
         if (res.ok) {
           const user = await res.json();
           setSpotifyUser(user);
