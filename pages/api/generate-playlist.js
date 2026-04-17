@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     console.log('DEBUG: OPENAI_API_KEY exists?', !!process.env.OPENAI_API_KEY);
     console.log('DEBUG: All env keys:', Object.keys(process.env).filter(k => k.includes('KEY') || k.includes('API')));
     
-    const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+   const apiKey = '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';
     console.log('DEBUG: Final apiKey?', !!apiKey);
     
     if (!apiKey) {
