@@ -71,73 +71,61 @@ Return ONLY valid JSON, no markdown, no preamble:
 }`;
 
 export default async function handler(req, res) {
-  // Only accept POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { prompt } = req.body;
   
-  // Get API key from environment variables
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API;
+  const apiKey = process.env.CLAUDE_API_KEY;
 
-  // Check if API key exists
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key is not configured' });
+    return res.status(500).json({ error: 'Claude API key is not configured' });
   }
 
-  // Validate prompt
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
   try {
-    // Call Gemini API
-    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-    
-    const response = await fetch(geminiUrl, {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        contents: [
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [
           {
-            parts: [
-              {
-                text: `${CURATOR_SYSTEM_PROMPT}\n\nCreate a playlist for this request: ${prompt}`,
-              },
-            ],
+            role: 'user',
+            content: `${CURATOR_SYSTEM_PROMPT}\n\nCreate a playlist for this request: ${prompt}`,
           },
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1200,
-        },
       }),
     });
 
     const responseText = await response.text();
 
     if (!response.ok) {
+      console.error('Claude API error:', responseText);
       return res.status(502).json({ error: 'AI service error' });
     }
 
     const data = JSON.parse(responseText);
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const generatedText = data.content?.[0]?.text;
 
     if (!generatedText) {
       return res.status(500).json({ error: 'No response from AI service' });
     }
 
-    // Clean up markdown formatting if present
     const cleanedJson = generatedText
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
 
-    // Parse and return playlist
     const playlist = JSON.parse(cleanedJson);
     
     return res.status(200).json(playlist);
